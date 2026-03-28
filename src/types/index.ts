@@ -1,3 +1,15 @@
+// ─── Shared Unions ───────────────────────────────────────────────────────────
+
+export type RewriteStyle =
+  | "concise"
+  | "story"
+  | "bold"
+  | "data-driven"
+  | "question-led"
+  | "linkedin-polish"
+  | "shorter"
+  | "more-human";
+
 // ─── Core Data Models ────────────────────────────────────────────────────────
 
 export interface UserBrandProfile {
@@ -6,11 +18,11 @@ export interface UserBrandProfile {
   currentTitle: string;
   targetTitle: string;
   yearsExperience: number;
-  skills: string[];           // e.g. ["SQL", "Power BI", "Python", "ETL"]
-  industries: string[];       // e.g. ["Healthcare", "FinTech"]
+  skills: string[];
+  industries: string[];
   tone: "professional" | "conversational" | "authoritative" | "story-driven";
-  contentPillars: string[];   // e.g. ["Data Quality", "Career Growth"]
-  audience: string;           // Free text: who the user wants to reach
+  contentPillars: string[];
+  audience: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -19,13 +31,13 @@ export interface TargetRole {
   id: string;
   title: string;
   keywords: string[];
-  companies: string[];        // optional target companies
+  companies: string[];
   notes: string;
 }
 
 export interface ContentPillar {
   id: string;
-  name: string;               // e.g. "Data Quality"
+  name: string;
   description: string;
   exampleTopics: string[];
   frequency: "daily" | "weekly" | "biweekly";
@@ -35,7 +47,7 @@ export interface SavedPrompt {
   id: string;
   label: string;
   systemMessage: string;
-  userTemplate: string;       // with {{placeholders}}
+  userTemplate: string;
   category: "draft" | "rewrite" | "hook" | "cta" | "scoring" | "strategy";
   createdAt: number;
 }
@@ -47,7 +59,7 @@ export interface PostDraft {
   pillar: string;
   model: string;
   scoringResult?: ScoringResult;
-  variants: RewriteVariant[];
+  variants: string[];
   status: "draft" | "ready" | "posted";
   createdAt: number;
   updatedAt: number;
@@ -56,7 +68,7 @@ export interface PostDraft {
 export interface RewriteVariant {
   id: string;
   draftId: string;
-  style: "concise" | "story" | "bold" | "data-driven" | "question-led";
+  style: RewriteStyle;
   content: string;
   model: string;
   createdAt: number;
@@ -66,14 +78,14 @@ export interface ScoringResult {
   id: string;
   draftId: string;
   scores: {
-    hook: number;           // 0–10
+    hook: number;
     clarity: number;
     relevance: number;
     cta: number;
     authenticity: number;
   };
-  totalScore: number;       // average of above
-  feedback: string[];       // 3–5 concrete improvement suggestions
+  totalScore: number;
+  feedback: string[];
   model: string;
   createdAt: number;
 }
@@ -88,7 +100,7 @@ export interface PerformanceLog {
   reactions: number;
   comments: number;
   reposts: number;
-  profileViews: number;     // manually noted
+  profileViews: number;
   notes: string;
   createdAt: number;
 }
@@ -97,20 +109,31 @@ export interface AIRecommendation {
   id: string;
   type: "pillar" | "format" | "timing" | "topic" | "hook";
   content: string;
-  basedOn: string;          // e.g. "last 10 performance logs"
+  basedOn: string;
   createdAt: number;
 }
 
 export interface WeeklyStrategySummary {
   id: string;
-  weekStart: number;        // epoch ms
+  weekStart: number;
   plannedPosts: Array<{
     dayOfWeek: number;
     pillar: string;
     topicIdea: string;
     format: string;
   }>;
-  aiNarrative: string;      // generated strategy summary
+  aiNarrative: string;
+  createdAt: number;
+}
+
+// ─── Draft → Score Bridge ────────────────────────────────────────────────────
+
+export interface ScoreComparisonPayload {
+  main: string;
+  variant1?: string;
+  variant2?: string;
+  variant3?: string;
+  sourceTopic?: string;
   createdAt: number;
 }
 
@@ -133,8 +156,8 @@ export type OllamaStatus = "checking" | "online" | "offline" | "error";
 // ─── App Settings ─────────────────────────────────────────────────────────────
 
 export interface AppSettings {
-  ollamaUrl: string;          // default: http://localhost:11434
-  defaultModel: string;       // e.g. "mistral"
+  ollamaUrl: string;
+  defaultModel: string;
   streamingEnabled: boolean;
   onboardingComplete: boolean;
   activeProfileId: string | null;

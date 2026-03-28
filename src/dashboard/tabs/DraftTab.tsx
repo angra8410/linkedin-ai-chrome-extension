@@ -9,7 +9,12 @@ import {
   type RewriteStyle,
 } from "../../lib/prompts";
 import { saveDraft } from "../../lib/db";
-import type { UserBrandProfile, AppSettings, PostDraft } from "../../types";
+import type {
+  UserBrandProfile,
+  AppSettings,
+  PostDraft,
+  ScoreComparisonPayload,
+} from "../../types";
 
 type Mode = "post" | "recruiter" | "hooks" | "cta";
 
@@ -38,6 +43,7 @@ const AUTO_VARIANT_STYLES: RewriteStyle[] = [
 interface Props {
   profile: UserBrandProfile | null;
   settings: AppSettings | null;
+  onSendToScore: (payload: ScoreComparisonPayload) => void;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -45,7 +51,7 @@ function getErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
-export default function DraftTab({ profile, settings }: Props) {
+export default function DraftTab({ profile, settings, onSendToScore }: Props) {
   const [mode, setMode] = useState<Mode>("post");
   const [topic, setTopic] = useState("");
   const [pillar, setPillar] = useState("");
@@ -86,10 +92,7 @@ export default function DraftTab({ profile, settings }: Props) {
     return promptGenerateCTAs(topic);
   };
 
-  const runGenerate = async (
-    user: string,
-    system: string
-  ): Promise<string> => {
+  const runGenerate = async (user: string, system: string): Promise<string> => {
     if (streamingEnabled) {
       let finalText = "";
 
@@ -281,6 +284,19 @@ export default function DraftTab({ profile, settings }: Props) {
     setRewriteOutput("");
   };
 
+  const handleSendAllToScore = () => {
+    if (!output.trim()) return;
+
+    onSendToScore({
+      main: output,
+      variant1: variants[0]?.content ?? "",
+      variant2: variants[1]?.content ?? "",
+      variant3: variants[2]?.content ?? "",
+      sourceTopic: topic,
+      createdAt: Date.now(),
+    });
+  };
+
   return (
     <div className="max-w-4xl space-y-6">
       {!profile && (
@@ -380,9 +396,7 @@ export default function DraftTab({ profile, settings }: Props) {
           </div>
 
           <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap min-h-[120px]">
-            {output || (
-              <span className="text-gray-400 animate-pulse">Writing...</span>
-            )}
+            {output || <span className="text-gray-400 animate-pulse">Writing...</span>}
           </div>
 
           {output && !loading && (
@@ -393,6 +407,7 @@ export default function DraftTab({ profile, settings }: Props) {
               >
                 Copy
               </button>
+
               <button
                 onClick={handleSave}
                 disabled={saved}
@@ -400,6 +415,15 @@ export default function DraftTab({ profile, settings }: Props) {
               >
                 {saved ? "✓ Saved" : "Save Draft"}
               </button>
+
+              {(mode === "post" || mode === "recruiter") && (
+                <button
+                  onClick={handleSendAllToScore}
+                  className="px-4 py-2 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"
+                >
+                  Send main + variants to Score
+                </button>
+              )}
             </div>
           )}
         </div>

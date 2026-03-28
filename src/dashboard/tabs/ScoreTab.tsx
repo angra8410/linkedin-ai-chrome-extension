@@ -1,11 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { generate } from "../../lib/ollama";
 import { promptScoreDraft } from "../../lib/prompts";
-import type { UserBrandProfile, AppSettings, ScoringResult } from "../../types";
+import type {
+  UserBrandProfile,
+  AppSettings,
+  ScoringResult,
+  ScoreComparisonPayload,
+} from "../../types";
 
 interface Props {
   profile: UserBrandProfile | null;
   settings: AppSettings | null;
+  seedPayload?: ScoreComparisonPayload | null;
 }
 
 type VariantKey = "main" | "variant1" | "variant2" | "variant3";
@@ -38,7 +44,7 @@ const VARIANT_LABELS: Record<VariantKey, string> = {
   variant3: "Variant 3",
 };
 
-export default function ScoreTab({ settings }: Props) {
+export default function ScoreTab({ settings, seedPayload }: Props) {
   const [drafts, setDrafts] = useState<Record<VariantKey, string>>({
     main: "",
     variant1: "",
@@ -49,9 +55,26 @@ export default function ScoreTab({ settings }: Props) {
   const [results, setResults] = useState<VariantScoreCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lastSeedAt, setLastSeedAt] = useState<number | null>(null);
 
   const model = settings?.defaultModel ?? "llama3.1:latest";
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
+
+  useEffect(() => {
+    if (!seedPayload) return;
+    if (lastSeedAt === seedPayload.createdAt) return;
+
+    setDrafts({
+      main: seedPayload.main ?? "",
+      variant1: seedPayload.variant1 ?? "",
+      variant2: seedPayload.variant2 ?? "",
+      variant3: seedPayload.variant3 ?? "",
+    });
+
+    setResults([]);
+    setError("");
+    setLastSeedAt(seedPayload.createdAt);
+  }, [seedPayload, lastSeedAt]);
 
   const filledInputs = useMemo<VariantInput[]>(() => {
     return (Object.keys(drafts) as VariantKey[])
@@ -164,6 +187,12 @@ export default function ScoreTab({ settings }: Props) {
           <p className="text-sm text-gray-500 mt-1">
             Paste your main draft and up to 3 variants. The extension will score each one and identify the strongest option.
           </p>
+
+          {seedPayload && (
+            <p className="text-xs text-linkedin-blue mt-2">
+              Draft bundle received from Draft tab{seedPayload.sourceTopic ? ` · Topic: ${seedPayload.sourceTopic}` : ""}.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-4">

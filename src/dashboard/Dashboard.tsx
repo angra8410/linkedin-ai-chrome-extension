@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { getSettings, getActiveProfile } from "../lib/storage";
 import { checkOllamaStatus } from "../lib/ollama";
-import type { OllamaStatus, UserBrandProfile, AppSettings } from "../types";
+import type {
+  OllamaStatus,
+  UserBrandProfile,
+  AppSettings,
+  ScoreComparisonPayload,
+} from "../types";
 import ProfileTab from "./tabs/ProfileTab";
 import DraftTab from "./tabs/DraftTab";
 import ScoreTab from "./tabs/ScoreTab";
@@ -12,12 +17,12 @@ import SettingsTab from "./tabs/SettingsTab";
 type Tab = "draft" | "score" | "planner" | "analytics" | "profile" | "settings";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "draft",     label: "Draft",     icon: "✦" },
-  { id: "score",     label: "Score",     icon: "★" },
-  { id: "planner",   label: "Planner",   icon: "📅" },
+  { id: "draft", label: "Draft", icon: "✦" },
+  { id: "score", label: "Score", icon: "★" },
+  { id: "planner", label: "Planner", icon: "📅" },
   { id: "analytics", label: "Analytics", icon: "📊" },
-  { id: "profile",   label: "Profile",   icon: "👤" },
-  { id: "settings",  label: "Settings",  icon: "⚙️" },
+  { id: "profile", label: "Profile", icon: "👤" },
+  { id: "settings", label: "Settings", icon: "⚙️" },
 ];
 
 export default function Dashboard() {
@@ -25,33 +30,37 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<UserBrandProfile | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus>("checking");
+  const [scoreSeed, setScoreSeed] = useState<ScoreComparisonPayload | null>(null);
 
   const reload = async () => {
     const s = await getSettings();
     setSettings(s);
+
     const p = await getActiveProfile();
     setProfile(p);
+
     const status = await checkOllamaStatus(s.ollamaUrl);
     setOllamaStatus(status);
   };
 
   useEffect(() => {
     reload();
-    // Check hash for direct navigation (e.g. #onboarding)
     if (window.location.hash === "#onboarding") setTab("profile");
   }, []);
 
+  const handleSendToScore = (payload: ScoreComparisonPayload) => {
+    setScoreSeed(payload);
+    setTab("score");
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
-      {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
-        {/* Logo */}
         <div className="px-5 py-5 border-b border-gray-100">
           <h1 className="font-bold text-linkedin-blue text-lg leading-tight">LinkedIn AI</h1>
           <p className="text-xs text-gray-400 mt-0.5">Local · Private · Fast</p>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 py-4 space-y-0.5 px-2">
           {TABS.map((t) => (
             <button
@@ -69,15 +78,15 @@ export default function Dashboard() {
           ))}
         </nav>
 
-        {/* Ollama status */}
         <div className="p-4 border-t border-gray-100">
-          <OllamaStatusPanel status={ollamaStatus} model={settings?.defaultModel ?? "—"} />
+          <OllamaStatusPanel
+            status={ollamaStatus}
+            model={settings?.defaultModel ?? "—"}
+          />
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        {/* Top bar */}
         <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
           <div>
             <h2 className="text-base font-semibold text-gray-800">
@@ -89,6 +98,7 @@ export default function Dashboard() {
               </p>
             )}
           </div>
+
           {!profile && tab !== "profile" && (
             <button
               onClick={() => setTab("profile")}
@@ -99,33 +109,54 @@ export default function Dashboard() {
           )}
         </header>
 
-        {/* Tab content */}
         <div className="p-8">
-          {tab === "draft"     && <DraftTab     profile={profile} settings={settings} />}
-          {tab === "score"     && <ScoreTab     profile={profile} settings={settings} />}
-          {tab === "planner"   && <PlannerTab   profile={profile} settings={settings} />}
+          {tab === "draft" && (
+            <DraftTab
+              profile={profile}
+              settings={settings}
+              onSendToScore={handleSendToScore}
+            />
+          )}
+
+          {tab === "score" && (
+            <ScoreTab
+              profile={profile}
+              settings={settings}
+              seedPayload={scoreSeed}
+            />
+          )}
+
+          {tab === "planner" && <PlannerTab profile={profile} settings={settings} />}
           {tab === "analytics" && <AnalyticsTab profile={profile} settings={settings} />}
-          {tab === "profile"   && <ProfileTab   onSave={reload} />}
-          {tab === "settings"  && <SettingsTab  onSave={reload} />}
+          {tab === "profile" && <ProfileTab onSave={reload} />}
+          {tab === "settings" && <SettingsTab onSave={reload} />}
         </div>
       </main>
     </div>
   );
 }
 
-function OllamaStatusPanel({ status, model }: { status: OllamaStatus; model: string }) {
+function OllamaStatusPanel({
+  status,
+  model,
+}: {
+  status: OllamaStatus;
+  model: string;
+}) {
   const colors: Record<OllamaStatus, string> = {
     checking: "text-yellow-600",
-    online:   "text-green-600",
-    offline:  "text-red-500",
-    error:    "text-orange-500",
+    online: "text-green-600",
+    offline: "text-red-500",
+    error: "text-orange-500",
   };
+
   const labels: Record<OllamaStatus, string> = {
     checking: "Checking...",
-    online:   "Ollama online",
-    offline:  "Ollama offline",
-    error:    "Connection error",
+    online: "Ollama online",
+    offline: "Ollama offline",
+    error: "Connection error",
   };
+
   return (
     <div className="text-xs">
       <div className={`font-semibold ${colors[status]}`}>{labels[status]}</div>
