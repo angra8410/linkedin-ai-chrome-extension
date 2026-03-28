@@ -10,6 +10,8 @@ export type RewriteStyle =
   | "shorter"
   | "more-human";
 
+export type PostDraftStatus = "draft" | "ready" | "posted";
+
 // ─── Core Data Models ────────────────────────────────────────────────────────
 
 export interface UserBrandProfile {
@@ -60,7 +62,7 @@ export interface PostDraft {
   model: string;
   scoringResult?: ScoringResult;
   variants: string[];
-  status: "draft" | "ready" | "posted";
+  status: PostDraftStatus;
   createdAt: number;
   updatedAt: number;
 }

@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { deleteDraft, getDrafts } from "../../lib/db";
+import {
+  deleteDraft,
+  getDrafts,
+  moveDraftLeft,
+  moveDraftRight,
+  updateDraftStatus,
+} from "../../lib/db";
 import type {
   AppSettings,
   DraftPromotionPayload,
@@ -24,6 +30,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("all");
   const [pillarFilter, setPillarFilter] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   const loadDrafts = async () => {
     setLoading(true);
@@ -71,6 +78,15 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
     });
   }, [drafts, query, statusFilter, scoreFilter, pillarFilter]);
 
+  const kanbanColumns = useMemo(
+    () => ({
+      draft: filteredDrafts.filter((draft) => draft.status === "draft"),
+      ready: filteredDrafts.filter((draft) => draft.status === "ready"),
+      posted: filteredDrafts.filter((draft) => draft.status === "posted"),
+    }),
+    [filteredDrafts]
+  );
+
   const handleOpenInDraft = (draft: PostDraft) => {
     onOpenInDraft({
       content: draft.content,
@@ -102,6 +118,41 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
     }
   };
 
+  const handleMoveLeft = async (draft: PostDraft) => {
+    try {
+      setMovingId(draft.id);
+      await moveDraftLeft(draft.id);
+      await loadDrafts();
+    } finally {
+      setMovingId(null);
+    }
+  };
+
+  const handleMoveRight = async (draft: PostDraft) => {
+    try {
+      setMovingId(draft.id);
+      await moveDraftRight(draft.id);
+      await loadDrafts();
+    } finally {
+      setMovingId(null);
+    }
+  };
+
+  const handleSetStatus = async (
+    draft: PostDraft,
+    status: PostDraft["status"]
+  ) => {
+    if (draft.status === status) return;
+
+    try {
+      setMovingId(draft.id);
+      await updateDraftStatus(draft.id, status);
+      await loadDrafts();
+    } finally {
+      setMovingId(null);
+    }
+  };
+
   const draftStatusColor = (status: PostDraft["status"]) => {
     if (status === "ready") return "text-green-700 bg-green-100";
     if (status === "posted") return "text-linkedin-blue bg-linkedin-light";
@@ -127,8 +178,141 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
     return `${text.slice(0, max).trim()}...`;
   };
 
+  const renderDraftCard = (draft: PostDraft) => {
+    const isDeleting = deletingId === draft.id;
+    const isMoving = movingId === draft.id;
+
+    return (
+      <div
+        key={draft.id}
+        className="border border-gray-200 rounded-xl p-4 bg-white space-y-3 shadow-sm"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="text-xs text-gray-400">{formatDate(draft.createdAt)}</div>
+
+          <div className="flex gap-2 flex-wrap justify-end">
+            {draft.scoringResult && (
+              <span
+                className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
+                  draft.scoringResult.totalScore
+                )}`}
+              >
+                {draft.scoringResult.totalScore.toFixed(1)}/10
+              </span>
+            )}
+
+            <span
+              className={`text-[11px] px-2 py-1 rounded-full font-semibold capitalize ${draftStatusColor(
+                draft.status
+              )}`}
+            >
+              {draft.status}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-sm font-semibold text-gray-800">
+            {draft.prompt || "Untitled draft"}
+          </div>
+          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mt-2">
+            {truncate(draft.content)}
+          </div>
+        </div>
+
+        <div className="flex gap-2 flex-wrap">
+          {draft.pillar && (
+            <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+              {draft.pillar}
+            </span>
+          )}
+          <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+            {draft.model}
+          </span>
+          <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+            Variants: {draft.variants.length}
+          </span>
+        </div>
+
+        <div className="flex gap-2 flex-wrap pt-1">
+          {draft.status !== "draft" && (
+            <button
+              onClick={() => void handleMoveLeft(draft)}
+              disabled={isMoving}
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {isMoving ? "Moving..." : "← Move Left"}
+            </button>
+          )}
+
+          {draft.status !== "posted" && (
+            <button
+              onClick={() => void handleMoveRight(draft)}
+              disabled={isMoving}
+              className="text-xs px-3 py-1.5 rounded-lg border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light disabled:opacity-50"
+            >
+              {isMoving ? "Moving..." : "Move Right →"}
+            </button>
+          )}
+
+          {draft.status !== "draft" && (
+            <button
+              onClick={() => void handleSetStatus(draft, "draft")}
+              disabled={isMoving}
+              className="text-xs text-gray-600 underline disabled:opacity-50"
+            >
+              Mark Draft
+            </button>
+          )}
+
+          {draft.status !== "ready" && (
+            <button
+              onClick={() => void handleSetStatus(draft, "ready")}
+              disabled={isMoving}
+              className="text-xs text-green-700 underline disabled:opacity-50"
+            >
+              Mark Ready
+            </button>
+          )}
+
+          {draft.status !== "posted" && (
+            <button
+              onClick={() => void handleSetStatus(draft, "posted")}
+              disabled={isMoving}
+              className="text-xs text-linkedin-blue underline disabled:opacity-50"
+            >
+              Mark Posted
+            </button>
+          )}
+        </div>
+
+        <div className="flex gap-3 flex-wrap pt-1">
+          <button
+            onClick={() => handleOpenInDraft(draft)}
+            className="text-xs text-linkedin-blue underline"
+          >
+            Open in Draft
+          </button>
+          <button
+            onClick={() => navigator.clipboard.writeText(draft.content)}
+            className="text-xs text-linkedin-blue underline"
+          >
+            Copy
+          </button>
+          <button
+            onClick={() => handleDelete(draft)}
+            disabled={isDeleting}
+            className="text-xs text-red-600 underline disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="max-w-7xl space-y-6">
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
         <div>
           <h3 className="font-semibold text-gray-800">Draft Library</h3>
@@ -222,106 +406,59 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h4 className="font-semibold text-gray-800">Saved Drafts</h4>
-          <span className="text-xs text-gray-400">
-            {loading ? "Loading..." : `${filteredDrafts.length} result(s)`}
-          </span>
+      <div className="grid xl:grid-cols-3 gap-5">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h4 className="font-semibold text-gray-800">Draft</h4>
+            <span className="text-xs text-gray-400">{kanbanColumns.draft.length}</span>
+          </div>
+          <div className="p-4 space-y-4 min-h-[220px] bg-gray-50/40">
+            {loading ? (
+              <div className="text-sm text-gray-500">Loading drafts...</div>
+            ) : kanbanColumns.draft.length === 0 ? (
+              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+                No drafts in this column.
+              </div>
+            ) : (
+              kanbanColumns.draft.map(renderDraftCard)
+            )}
+          </div>
         </div>
 
-        <div className="p-6">
-          {loading ? (
-            <div className="text-sm text-gray-500">Loading drafts...</div>
-          ) : filteredDrafts.length === 0 ? (
-            <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
-              No drafts matched your current filters.
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {filteredDrafts.map((draft) => {
-                const isDeleting = deletingId === draft.id;
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h4 className="font-semibold text-gray-800">Ready</h4>
+            <span className="text-xs text-gray-400">{kanbanColumns.ready.length}</span>
+          </div>
+          <div className="p-4 space-y-4 min-h-[220px] bg-green-50/30">
+            {loading ? (
+              <div className="text-sm text-gray-500">Loading drafts...</div>
+            ) : kanbanColumns.ready.length === 0 ? (
+              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+                No drafts in this column.
+              </div>
+            ) : (
+              kanbanColumns.ready.map(renderDraftCard)
+            )}
+          </div>
+        </div>
 
-                return (
-                  <div
-                    key={draft.id}
-                    className="border border-gray-200 rounded-xl p-4 bg-gray-50/70 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="text-xs text-gray-400">
-                        {formatDate(draft.createdAt)}
-                      </div>
-
-                      <div className="flex gap-2 flex-wrap justify-end">
-                        {draft.scoringResult && (
-                          <span
-                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
-                              draft.scoringResult.totalScore
-                            )}`}
-                          >
-                            {draft.scoringResult.totalScore.toFixed(1)}/10
-                          </span>
-                        )}
-
-                        <span
-                          className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
-                            draft.status
-                          )}`}
-                        >
-                          {draft.status}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800">
-                        {draft.prompt || "Untitled draft"}
-                      </div>
-                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mt-2">
-                        {truncate(draft.content)}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 flex-wrap">
-                      {draft.pillar && (
-                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border border-gray-200">
-                          {draft.pillar}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border border-gray-200">
-                        {draft.model}
-                      </span>
-                      <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border border-gray-200">
-                        Variants: {draft.variants.length}
-                      </span>
-                    </div>
-
-                    <div className="flex gap-3 flex-wrap">
-                      <button
-                        onClick={() => handleOpenInDraft(draft)}
-                        className="text-xs text-linkedin-blue underline"
-                      >
-                        Open in Draft
-                      </button>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(draft.content)}
-                        className="text-xs text-linkedin-blue underline"
-                      >
-                        Copy
-                      </button>
-                      <button
-                        onClick={() => handleDelete(draft)}
-                        disabled={isDeleting}
-                        className="text-xs text-red-600 underline disabled:opacity-50"
-                      >
-                        {isDeleting ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h4 className="font-semibold text-gray-800">Posted</h4>
+            <span className="text-xs text-gray-400">{kanbanColumns.posted.length}</span>
+          </div>
+          <div className="p-4 space-y-4 min-h-[220px] bg-linkedin-light/40">
+            {loading ? (
+              <div className="text-sm text-gray-500">Loading drafts...</div>
+            ) : kanbanColumns.posted.length === 0 ? (
+              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+                No drafts in this column.
+              </div>
+            ) : (
+              kanbanColumns.posted.map(renderDraftCard)
+            )}
+          </div>
         </div>
       </div>
     </div>
