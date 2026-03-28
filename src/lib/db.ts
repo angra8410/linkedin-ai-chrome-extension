@@ -23,14 +23,14 @@ class LinkedInAIDatabase extends Dexie {
   constructor() {
     super("LinkedInAIExtension");
     this.version(1).stores({
-      drafts:          "id, status, pillar, createdAt",
-      variants:        "id, draftId, style, createdAt",
-      scoringResults:  "id, draftId, totalScore, createdAt",
+      drafts: "id, status, pillar, createdAt",
+      variants: "id, draftId, style, createdAt",
+      scoringResults: "id, draftId, totalScore, createdAt",
       performanceLogs: "id, postedAt, pillar, format, createdAt",
       recommendations: "id, type, createdAt",
       weeklySummaries: "id, weekStart, createdAt",
-      savedPrompts:    "id, category, createdAt",
-      contentPillars:  "id, name, frequency",
+      savedPrompts: "id, category, createdAt",
+      contentPillars: "id, name, frequency",
     });
   }
 }
@@ -45,6 +45,33 @@ export async function saveDraft(draft: PostDraft): Promise<void> {
 
 export async function getDrafts(): Promise<PostDraft[]> {
   return db.drafts.orderBy("createdAt").reverse().toArray();
+}
+
+export async function getRecentDrafts(limit = 20): Promise<PostDraft[]> {
+  return db.drafts.orderBy("createdAt").reverse().limit(limit).toArray();
+}
+
+export async function getScoredDrafts(limit = 20): Promise<PostDraft[]> {
+  const drafts = await db.drafts.orderBy("createdAt").reverse().toArray();
+
+  return drafts
+    .filter((draft) => !!draft.scoringResult)
+    .sort((a, b) => {
+      const aScore = a.scoringResult?.totalScore ?? 0;
+      const bScore = b.scoringResult?.totalScore ?? 0;
+      return bScore - aScore;
+    })
+    .slice(0, limit);
+}
+
+export async function getTopReadyDrafts(limit = 10): Promise<PostDraft[]> {
+  const drafts = await db.drafts
+    .where("status")
+    .equals("ready")
+    .reverse()
+    .sortBy("createdAt");
+
+  return drafts.reverse().slice(0, limit);
 }
 
 export async function getDraft(id: string): Promise<PostDraft | undefined> {
