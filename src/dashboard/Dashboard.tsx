@@ -135,7 +135,13 @@ export default function Dashboard() {
             />
           )}
 
-          {tab === "planner" && <PlannerTab profile={profile} settings={settings} />}
+          {tab === "planner" && (
+            <PlannerTab
+              profile={profile}
+              settings={settings}
+              onSendToDraft={handlePromoteToDraft}
+            />
+          )}
 
           {tab === "analytics" && (
             <AnalyticsTab

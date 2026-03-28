@@ -6,6 +6,7 @@ import type {
   AppSettings,
   WeeklyStrategySummary,
   ContentPillar,
+  DraftPromotionPayload,
 } from "../../types";
 import { db } from "../../lib/db";
 
@@ -20,10 +21,10 @@ const FORMAT_EMOJIS: Record<string, string> = {
 };
 
 const RECOMMENDED_DAY_MAP: Record<number, number[]> = {
-  2: [2, 4],          // Tue, Thu
-  3: [2, 3, 4],       // Tue, Wed, Thu
-  4: [1, 2, 3, 4],    // Mon, Tue, Wed, Thu
-  5: [1, 2, 3, 4, 5], // Mon, Tue, Wed, Thu, Fri
+  2: [2, 4],
+  3: [2, 3, 4],
+  4: [1, 2, 3, 4],
+  5: [1, 2, 3, 4, 5],
 };
 
 const RECOMMENDED_SLOTS: Record<number, string> = {
@@ -39,9 +40,10 @@ const RECOMMENDED_SLOTS: Record<number, string> = {
 interface Props {
   profile: UserBrandProfile | null;
   settings: AppSettings | null;
+  onSendToDraft: (payload: DraftPromotionPayload) => void;
 }
 
-export default function PlannerTab({ profile, settings }: Props) {
+export default function PlannerTab({ profile, settings, onSendToDraft }: Props) {
   const [postsPerWeek, setPostsPerWeek] = useState(3);
   const [plan, setPlan] = useState<WeeklyStrategySummary | null>(null);
   const [pillars, setPillars] = useState<ContentPillar[]>([]);
@@ -103,7 +105,7 @@ export default function PlannerTab({ profile, settings }: Props) {
       if (fallbackPillars.length) {
         setPillars(fallbackPillars);
         setPillarMessage(
-          `Pillar generation returned invalid JSON, so I loaded your saved profile pillars instead.`
+          "Pillar generation returned invalid JSON, so I loaded your saved profile pillars instead."
         );
       } else {
         const details = getErrorMessage(error);
@@ -153,6 +155,27 @@ export default function PlannerTab({ profile, settings }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSendPlannedTopicToDraft = (post: {
+    topicIdea: string;
+    pillar: string;
+    format: string;
+    dayOfWeek: number;
+  }) => {
+    const topic = `${post.topicIdea}
+
+Planned pillar: ${post.pillar}
+Planned format: ${post.format}
+Planned day: ${DAYS[post.dayOfWeek - 1] ?? "Unknown"}
+Suggested time: ${RECOMMENDED_SLOTS[post.dayOfWeek] ?? "10:00 AM"}`;
+
+    onSendToDraft({
+      content: "",
+      sourceLabel: "Planner topic",
+      sourceTopic: topic,
+      createdAt: Date.now(),
+    });
   };
 
   return (
@@ -289,6 +312,15 @@ export default function PlannerTab({ profile, settings }: Props) {
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                       {FORMAT_EMOJIS[post.format] ?? ""} {post.format}
                     </span>
+                  </div>
+
+                  <div className="mt-3 flex gap-3 flex-wrap">
+                    <button
+                      onClick={() => handleSendPlannedTopicToDraft(post)}
+                      className="text-xs text-linkedin-blue underline"
+                    >
+                      Send planned topic to Draft
+                    </button>
                   </div>
                 </div>
               </div>
