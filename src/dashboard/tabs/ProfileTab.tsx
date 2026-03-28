@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getProfiles, saveProfile, getSettings, saveSettings } from "../../lib/storage";
+import { getProfiles, saveProfile, saveSettings } from "../../lib/storage";
 import type { UserBrandProfile } from "../../types";
 
 const TONE_OPTIONS: UserBrandProfile["tone"][] = [

@@ -13,15 +13,24 @@ import DraftTab from "./tabs/DraftTab";
 import ScoreTab from "./tabs/ScoreTab";
 import PlannerTab from "./tabs/PlannerTab";
 import AnalyticsTab from "./tabs/AnalyticsTab";
+import DraftLibraryTab from "./tabs/DraftLibraryTab";
 import SettingsTab from "./tabs/SettingsTab";
 
-type Tab = "draft" | "score" | "planner" | "analytics" | "profile" | "settings";
+type Tab =
+  | "draft"
+  | "score"
+  | "planner"
+  | "analytics"
+  | "library"
+  | "profile"
+  | "settings";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "draft", label: "Draft", icon: "✦" },
   { id: "score", label: "Score", icon: "★" },
   { id: "planner", label: "Planner", icon: "📅" },
   { id: "analytics", label: "Analytics", icon: "📊" },
+  { id: "library", label: "Library", icon: "📚" },
   { id: "profile", label: "Profile", icon: "👤" },
   { id: "settings", label: "Settings", icon: "⚙️" },
 ];
@@ -46,7 +55,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    reload();
+    void reload();
     if (window.location.hash === "#onboarding") setTab("profile");
   }, []);
 
@@ -148,6 +157,14 @@ export default function Dashboard() {
               profile={profile}
               settings={settings}
               onReuseInDraft={handlePromoteToDraft}
+            />
+          )}
+
+          {tab === "library" && (
+            <DraftLibraryTab
+              profile={profile}
+              settings={settings}
+              onOpenInDraft={handlePromoteToDraft}
             />
           )}
 

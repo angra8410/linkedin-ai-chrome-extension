@@ -26,11 +26,7 @@ function set<T>(key: string, value: T): Promise<void> {
   });
 }
 
-function remove(key: string): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.remove(key, resolve);
-  });
-}
+
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 

@@ -33,15 +33,16 @@ type ScoredCandidate = {
   score: ScoringResult;
 };
 
-type PipelineState = {
-  visible: boolean;
-  step: number;
-  total: number;
-  label: string;
-  status: "idle" | "running" | "success" | "error";
-  error?: string;
-  autoSaved?: boolean;
-};
+type PipelineStage =
+  | "idle"
+  | "receiving"
+  | "main"
+  | "variants"
+  | "scoring"
+  | "selecting"
+  | "saving"
+  | "done"
+  | "error";
 
 const REWRITE_STYLES: RewriteStyle[] = [
   "concise",
@@ -58,14 +59,6 @@ const AUTO_VARIANT_STYLES: RewriteStyle[] = [
   "linkedin-polish",
   "more-human",
   "shorter",
-];
-
-const PIPELINE_STEPS = [
-  "Generating main draft",
-  "Generating variants",
-  "Scoring candidates",
-  "Selecting best draft",
-  "Saving best draft candidate",
 ];
 
 interface Props {
@@ -105,6 +98,52 @@ function parseScoreResponse(raw: string, model: string): ScoringResult {
   };
 }
 
+function getPipelineStep(stage: PipelineStage): number {
+  switch (stage) {
+    case "receiving":
+      return 1;
+    case "main":
+      return 2;
+    case "variants":
+      return 3;
+    case "scoring":
+      return 4;
+    case "selecting":
+      return 5;
+    case "saving":
+      return 6;
+    case "done":
+      return 6;
+    case "error":
+      return 6;
+    default:
+      return 0;
+  }
+}
+
+function getPipelineLabel(stage: PipelineStage): string {
+  switch (stage) {
+    case "receiving":
+      return "Receiving planner topic";
+    case "main":
+      return "Generating main draft";
+    case "variants":
+      return "Generating variants";
+    case "scoring":
+      return "Scoring candidates";
+    case "selecting":
+      return "Selecting best draft";
+    case "saving":
+      return "Saving best draft candidate";
+    case "done":
+      return "Best draft selected and saved";
+    case "error":
+      return "Pipeline failed";
+    default:
+      return "";
+  }
+}
+
 export default function DraftTab({
   profile,
   settings,
@@ -125,14 +164,9 @@ export default function DraftTab({
   const [lastSeedAt, setLastSeedAt] = useState<number | null>(null);
   const [attachedScore, setAttachedScore] = useState<ScoringResult | undefined>(undefined);
   const [workflowMessage, setWorkflowMessage] = useState("");
-  const [pipeline, setPipeline] = useState<PipelineState>({
-    visible: false,
-    step: 0,
-    total: PIPELINE_STEPS.length,
-    label: "",
-    status: "idle",
-  });
-  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [pipelineStage, setPipelineStage] = useState<PipelineStage>("idle");
+  const [pipelineError, setPipelineError] = useState("");
+  const [autoSavedDraftId, setAutoSavedDraftId] = useState<string | null>(null);
 
   const autoRunRef = useRef<number | null>(null);
 
@@ -153,8 +187,9 @@ export default function DraftTab({
     setMode("post");
     setAttachedScore(seedPayload.scoringResult);
     setWorkflowMessage("");
-    setCurrentDraftId(null);
-    resetPipeline();
+    setPipelineStage(seedPayload.autoGenerate ? "receiving" : "idle");
+    setPipelineError("");
+    setAutoSavedDraftId(null);
 
     if (seedPayload.sourceTopic) {
       setTopic(seedPayload.sourceTopic);
@@ -168,7 +203,7 @@ export default function DraftTab({
 
     if (seedPayload.autoGenerate) {
       autoRunRef.current = seedPayload.createdAt;
-      setWorkflowMessage("Planner topic received. Running the automatic draft pipeline...");
+      setWorkflowMessage("Planner topic received. Starting automatic pipeline...");
     } else {
       autoRunRef.current = null;
     }
@@ -188,34 +223,6 @@ export default function DraftTab({
     autoRunRef.current = null;
     void generateBestDraftPipeline();
   }, [profile, seedPayload, topic]);
-
-  const resetPipeline = () => {
-    setPipeline({
-      visible: false,
-      step: 0,
-      total: PIPELINE_STEPS.length,
-      label: "",
-      status: "idle",
-    });
-  };
-
-  const updatePipeline = (
-    step: number,
-    label: string,
-    status: "running" | "success" | "error" = "running",
-    error?: string,
-    autoSaved?: boolean
-  ) => {
-    setPipeline({
-      visible: true,
-      step,
-      total: PIPELINE_STEPS.length,
-      label,
-      status,
-      error,
-      autoSaved,
-    });
-  };
 
   const buildPrompt = () => {
     if (!profile) return { system: "", user: "" };
@@ -315,8 +322,9 @@ export default function DraftTab({
     setRewriteOutput("");
     setAttachedScore(undefined);
     setWorkflowMessage("");
-    setCurrentDraftId(null);
-    resetPipeline();
+    setPipelineStage("idle");
+    setPipelineError("");
+    setAutoSavedDraftId(null);
     setLoading(true);
 
     const { system, user } = buildPrompt();
@@ -348,30 +356,6 @@ export default function DraftTab({
     }
   };
 
-  const autoSaveWinner = async (
-    winner: ScoredCandidate,
-    allVariants: DraftVariant[]
-  ): Promise<string> => {
-    const draftId = currentDraftId ?? crypto.randomUUID();
-    const status = winner.score.totalScore >= 8 ? "ready" : "draft";
-
-    const draft: PostDraft = {
-      id: draftId,
-      prompt: topic,
-      content: winner.content,
-      pillar: pillar || (profile?.contentPillars[0] ?? ""),
-      model,
-      scoringResult: winner.score,
-      variants: allVariants.map((v) => v.content),
-      status,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    await saveDraft(draft);
-    return draftId;
-  };
-
   const generateBestDraftPipeline = async () => {
     if (!profile || !topic.trim()) return;
 
@@ -380,20 +364,22 @@ export default function DraftTab({
     setSaved(false);
     setRewriteOutput("");
     setAttachedScore(undefined);
-    setCurrentDraftId(null);
+    setAutoSavedDraftId(null);
     setLoading(true);
     setVariantLoading(false);
+    setPipelineStage("main");
+    setPipelineError("");
     setWorkflowMessage("Automatic pipeline started.");
 
     try {
       const { system, user } = buildPrompt();
 
-      updatePipeline(1, PIPELINE_STEPS[0], "running");
       const mainDraft = await runGenerate(user, system, setOutput);
 
       if (!mainDraft) {
         setOutput("⚠️ Ollama responded, but no text was returned.");
-        updatePipeline(1, "No draft text was returned.", "error", "No draft text was returned.");
+        setPipelineStage("error");
+        setPipelineError("No draft text was returned.");
         setWorkflowMessage("Automatic pipeline stopped because no draft text was returned.");
         setLoading(false);
         return;
@@ -402,12 +388,13 @@ export default function DraftTab({
       setOutput(mainDraft);
       setLoading(false);
 
-      updatePipeline(2, PIPELINE_STEPS[1], "running");
+      setPipelineStage("variants");
       const generatedVariants = await generateVariants(mainDraft);
 
-      updatePipeline(3, PIPELINE_STEPS[2], "running");
+      setPipelineStage("scoring");
       const candidates: ScoredCandidate[] = [];
       const mainScore = await scoreCandidate(mainDraft);
+
       candidates.push({
         label: "Main draft",
         content: mainDraft,
@@ -433,45 +420,51 @@ export default function DraftTab({
 
       setVariants(scoredVariants);
 
-      updatePipeline(4, PIPELINE_STEPS[3], "running");
+      setPipelineStage("selecting");
       const winner = [...candidates].sort(
         (a, b) => b.score.totalScore - a.score.totalScore
       )[0];
 
       if (!winner) {
-        updatePipeline(4, "No winning draft could be selected.", "error", "No winning draft could be selected.");
-        setWorkflowMessage("Drafts were generated, but automatic scoring did not complete.");
+        setPipelineStage("error");
+        setPipelineError("No winning draft could be selected.");
+        setWorkflowMessage("Drafts were generated, but no winner could be selected.");
         return;
       }
 
       setOutput(winner.content);
       setAttachedScore(winner.score);
 
-      updatePipeline(5, PIPELINE_STEPS[4], "running");
-      const savedDraftId = await autoSaveWinner(winner, scoredVariants);
-      setCurrentDraftId(savedDraftId);
+      setPipelineStage("saving");
+
+      const draftId = crypto.randomUUID();
+      const autoSavedDraft: PostDraft = {
+        id: draftId,
+        prompt: topic,
+        content: winner.content,
+        pillar: pillar || (profile?.contentPillars[0] ?? ""),
+        model,
+        scoringResult: winner.score,
+        variants: scoredVariants.map((v) => v.content),
+        status: winner.score.totalScore >= 8 ? "ready" : "draft",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      await saveDraft(autoSavedDraft);
+
+      setAutoSavedDraftId(draftId);
       setSaved(true);
-
-      const savedStatus = winner.score.totalScore >= 8 ? "ready" : "draft";
-      updatePipeline(
-        5,
-        `Best draft selected and auto-saved as ${savedStatus}.`,
-        "success",
-        undefined,
-        true
-      );
-
+      setPipelineStage("done");
       setWorkflowMessage(
-        `Best draft selected automatically: ${winner.label} (${winner.score.totalScore.toFixed(1)}/10) and saved as a ${savedStatus} candidate.`
+        `Best draft selected automatically: ${winner.label} (${winner.score.totalScore.toFixed(1)}/10) and saved as a ${
+          winner.score.totalScore >= 8 ? "ready" : "draft"
+        } candidate.`
       );
     } catch (error) {
       console.error("Automatic planner-to-draft pipeline failed:", error);
-      updatePipeline(
-        pipeline.step || 1,
-        "Automatic pipeline failed.",
-        "error",
-        getErrorMessage(error)
-      );
+      setPipelineStage("error");
+      setPipelineError(getErrorMessage(error));
       setWorkflowMessage(`Automatic pipeline failed. Details: ${getErrorMessage(error)}`);
       setLoading(false);
       setVariantLoading(false);
@@ -503,10 +496,8 @@ export default function DraftTab({
   const handleSave = async () => {
     if (!output.trim()) return;
 
-    const draftId = currentDraftId ?? crypto.randomUUID();
-
     const draft: PostDraft = {
-      id: draftId,
+      id: autoSavedDraftId ?? crypto.randomUUID(),
       prompt: topic,
       content: output,
       pillar: pillar || (profile?.contentPillars[0] ?? ""),
@@ -522,9 +513,10 @@ export default function DraftTab({
     };
 
     await saveDraft(draft);
-    setCurrentDraftId(draftId);
     setSaved(true);
-    setWorkflowMessage(attachedScore ? "Draft and score saved successfully." : "Draft saved successfully.");
+    setWorkflowMessage(
+      attachedScore ? "Draft and score saved successfully." : "Draft saved successfully."
+    );
   };
 
   const useAsMainDraft = (text: string) => {
@@ -548,6 +540,9 @@ export default function DraftTab({
     });
   };
 
+  const pipelineVisible =
+    pipelineStage !== "idle" || !!workflowMessage || !!pipelineError;
+
   return (
     <div className="max-w-4xl space-y-6">
       {!profile && (
@@ -567,8 +562,9 @@ export default function DraftTab({
               setRewriteOutput("");
               setAttachedScore(undefined);
               setWorkflowMessage("");
-              setCurrentDraftId(null);
-              resetPipeline();
+              setPipelineStage("idle");
+              setPipelineError("");
+              setAutoSavedDraftId(null);
             }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
               mode === m
@@ -590,67 +586,79 @@ export default function DraftTab({
         </div>
       )}
 
-      {(pipeline.visible || workflowMessage) && (
+      {pipelineVisible && (
         <div
-          className={`rounded-2xl border p-4 space-y-3 ${
-            pipeline.status === "error"
+          className={`rounded-2xl border p-4 space-y-4 ${
+            pipelineStage === "error"
               ? "bg-red-50 border-red-200"
-              : pipeline.status === "success"
+              : pipelineStage === "done"
                 ? "bg-green-50 border-green-200"
                 : "bg-blue-50 border-blue-200"
           }`}
         >
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-semibold text-gray-800">
               Automatic Draft Pipeline
             </div>
-            {pipeline.visible && (
-              <div className="text-xs font-medium text-gray-500">
-                Step {Math.min(Math.max(pipeline.step, 1), pipeline.total)}/{pipeline.total}
-              </div>
-            )}
+            <div className="text-xs font-medium text-gray-500">
+              {getPipelineStep(pipelineStage)}/6
+            </div>
           </div>
 
           <div className="text-sm text-gray-700">
-            {pipeline.label || workflowMessage}
+            {workflowMessage || getPipelineLabel(pipelineStage)}
           </div>
 
-          {pipeline.error && (
-            <div className="text-xs text-red-700 bg-white/70 rounded-lg px-3 py-2">
-              {pipeline.error}
-            </div>
-          )}
-
-          <div className="grid gap-2">
-            {PIPELINE_STEPS.map((stepLabel, index) => {
+          <div className="space-y-2">
+            {[
+              "Receiving planner topic",
+              "Generating main draft",
+              "Generating variants",
+              "Scoring candidates",
+              "Selecting best draft",
+              "Saving best draft candidate",
+            ].map((stepLabel, index) => {
               const stepNumber = index + 1;
-              const isDone = pipeline.step > stepNumber || (pipeline.status === "success" && pipeline.step >= stepNumber);
-              const isCurrent = pipeline.step === stepNumber && pipeline.status === "running";
-              const isPending = pipeline.step < stepNumber;
+              const current = getPipelineStep(pipelineStage);
+              const done = current > stepNumber || pipelineStage === "done";
+              const active =
+                current === stepNumber &&
+                pipelineStage !== "done" &&
+                pipelineStage !== "error";
+              
 
               return (
                 <div
                   key={stepLabel}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${
-                    isDone
-                      ? "bg-white/70 text-green-700"
-                      : isCurrent
+                  className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${
+                    done
+                      ? "bg-white/80 text-green-700"
+                      : active
                         ? "bg-white text-linkedin-blue"
                         : "bg-white/50 text-gray-400"
                   }`}
                 >
-                  <span className="w-5 text-center font-semibold">
-                    {isDone ? "✓" : stepNumber}
+                  <div className="flex items-center gap-3">
+                    <span className="w-5 text-center font-semibold">
+                      {done ? "✓" : stepNumber}
+                    </span>
+                    <span>{stepLabel}</span>
+                  </div>
+                  <span className="text-xs">
+                    {done ? "done" : active ? "running..." : "pending"}
                   </span>
-                  <span>{stepLabel}</span>
-                  {isCurrent && <span className="ml-auto text-xs animate-pulse">running...</span>}
-                  {isPending && <span className="ml-auto text-xs">pending</span>}
                 </div>
               );
             })}
           </div>
 
-          {pipeline.autoSaved && (
+          {pipelineError && (
+            <div className="text-xs text-red-700 bg-white/70 rounded-lg px-3 py-2">
+              {pipelineError}
+            </div>
+          )}
+
+          {autoSavedDraftId && pipelineStage === "done" && (
             <div className="text-xs text-green-700 font-medium">
               Best draft candidate saved automatically.
             </div>
