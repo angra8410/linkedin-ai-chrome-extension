@@ -19,6 +19,9 @@ const REWRITE_STYLES: RewriteStyle[] = [
   "bold",
   "data-driven",
   "question-led",
+  "linkedin-polish",
+  "shorter",
+  "more-human",
 ];
 
 interface Props {
@@ -38,7 +41,7 @@ export default function DraftTab({ profile, settings }: Props) {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [rewriteStyle, setRewriteStyle] = useState<RewriteStyle>("story");
+  const [rewriteStyle, setRewriteStyle] = useState<RewriteStyle>("linkedin-polish");
   const [rewriteOutput, setRewriteOutput] = useState("");
   const [rewriteLoading, setRewriteLoading] = useState(false);
 
@@ -75,6 +78,7 @@ export default function DraftTab({ profile, settings }: Props) {
 
     setOutput("");
     setSaved(false);
+    setRewriteOutput("");
     setLoading(true);
 
     const { system, user } = buildPrompt();
@@ -172,7 +176,7 @@ export default function DraftTab({ profile, settings }: Props) {
       content: output,
       pillar: pillar || (profile?.contentPillars[0] ?? ""),
       model,
-      variants: [],
+      variants: rewriteOutput.trim() ? [rewriteOutput] : [],
       status: "draft",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -228,10 +232,10 @@ export default function DraftTab({ profile, settings }: Props) {
               mode === "post"
                 ? "e.g. Why data quality matters more than data volume"
                 : mode === "recruiter"
-                ? "e.g. Reduced data pipeline errors by 40% using dbt tests"
+                ? "e.g. Improved reporting accuracy by redesigning data validation logic"
                 : mode === "hooks"
                 ? "e.g. Common mistakes in BI dashboard design"
-                : "e.g. Why most data dashboards fail to drive decisions"
+                : "e.g. Why most dashboards fail to drive decisions"
             }
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
@@ -260,9 +264,7 @@ export default function DraftTab({ profile, settings }: Props) {
 
         <div className="text-xs text-gray-500">
           Active model: <span className="font-medium">{model}</span> · Streaming:{" "}
-          <span className="font-medium">
-            {streamingEnabled ? "on" : "off"}
-          </span>
+          <span className="font-medium">{streamingEnabled ? "on" : "off"}</span>
         </div>
 
         <button
@@ -338,12 +340,18 @@ export default function DraftTab({ profile, settings }: Props) {
               {rewriteOutput && (
                 <div className="bg-blue-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap">
                   {rewriteOutput}
-                  <div className="mt-3">
+                  <div className="mt-3 flex gap-3 flex-wrap">
                     <button
                       onClick={() => navigator.clipboard.writeText(rewriteOutput)}
                       className="text-xs text-linkedin-blue underline"
                     >
                       Copy rewrite
+                    </button>
+                    <button
+                      onClick={() => setOutput(rewriteOutput)}
+                      className="text-xs text-linkedin-blue underline"
+                    >
+                      Use rewrite as main draft
                     </button>
                   </div>
                 </div>

@@ -76,6 +76,10 @@ Required outcome:
 - Write a post that sounds like a thoughtful real-world insight from an experienced ${profile.currentTitle}.
 - Make it useful to professionals interested in ${pillar || "this topic"}.
 - Keep it practical, credible, and human.
+- Subtly position the writer as a Data Analyst with strong BI, SQL, Power Query, and data quality thinking.
+- Make the post feel relevant to healthcare analytics and operational reporting when appropriate.
+- Emphasize trust, reliability, and practical business value over hype.
+- Make the writer sound like someone hiring managers could trust with messy real-world data.
 
 Structure:
 1. Strong opening line that does NOT start with "I"
@@ -114,6 +118,9 @@ Goal:
 - Help recruiters notice this person as a strong ${profile.targetTitle} candidate.
 - Highlight practical value, relevant skills, and business impact.
 - Keep it confident, but not boastful.
+- Make the post reinforce strengths in SQL, Power BI, Power Query, ETL, and data quality when relevant.
+- Make the writer sound credible for Data Analyst and BI-facing opportunities.
+- Highlight practical problem-solving, stakeholder value, and trust in reporting.
 
 Include:
 - The challenge or context
@@ -195,7 +202,15 @@ Return ONLY the 3 CTAs, numbered 1 to 3.`,
 
 // ─── 5. Post Rewriting ────────────────────────────────────────────────────────
 
-export type RewriteStyle = "concise" | "story" | "bold" | "data-driven" | "question-led";
+export type RewriteStyle =
+  | "concise"
+  | "story"
+  | "bold"
+  | "data-driven"
+  | "question-led"
+  | "linkedin-polish"
+  | "shorter"
+  | "more-human";
 
 export function promptRewritePost(
   profile: UserBrandProfile,
@@ -213,6 +228,12 @@ export function promptRewritePost(
       "Rewrite it to feel more analytical and evidence-oriented. Lead with specificity, logic, and measurable thinking. Do not invent numbers.",
     "question-led":
       "Rewrite it so it opens with a strong question and then answers that question through the post.",
+    "linkedin-polish":
+      "Rewrite it into a polished LinkedIn-ready post. Improve flow, tighten wording, remove generic phrasing, keep it natural, skimmable, and credible.",
+    shorter:
+      "Rewrite it into a shorter version with the same meaning. Keep the strongest hook, one key insight, and one concise closing question. Max 90 words.",
+    "more-human":
+      "Rewrite it to sound more personal, natural, and less AI-like. Use simple wording, natural rhythm, and realistic professional language. Remove anything overly polished or generic.",
   };
 
   return {
