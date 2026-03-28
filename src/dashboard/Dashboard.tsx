@@ -136,7 +136,15 @@ export default function Dashboard() {
           )}
 
           {tab === "planner" && <PlannerTab profile={profile} settings={settings} />}
-          {tab === "analytics" && <AnalyticsTab profile={profile} settings={settings} />}
+
+          {tab === "analytics" && (
+            <AnalyticsTab
+              profile={profile}
+              settings={settings}
+              onReuseInDraft={handlePromoteToDraft}
+            />
+          )}
+
           {tab === "profile" && <ProfileTab onSave={reload} />}
           {tab === "settings" && <SettingsTab onSave={reload} />}
         </div>

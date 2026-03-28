@@ -12,11 +12,13 @@ import type {
   AppSettings,
   PerformanceLog,
   PostDraft,
+  DraftPromotionPayload,
 } from "../../types";
 
 interface Props {
   profile: UserBrandProfile | null;
   settings: AppSettings | null;
+  onReuseInDraft: (payload: DraftPromotionPayload) => void;
 }
 
 const FORMATS = ["list", "story", "insight", "question", "data"] as const;
@@ -33,7 +35,7 @@ const EMPTY_LOG = {
   notes: "",
 };
 
-export default function AnalyticsTab({ profile, settings }: Props) {
+export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Props) {
   const [form, setForm] = useState({ ...EMPTY_LOG });
   const [logs, setLogs] = useState<PerformanceLog[]>([]);
   const [recentDrafts, setRecentDrafts] = useState<PostDraft[]>([]);
@@ -140,6 +142,16 @@ export default function AnalyticsTab({ profile, settings }: Props) {
     return `${text.slice(0, max).trim()}...`;
   };
 
+  const reuseDraft = (draft: PostDraft) => {
+    onReuseInDraft({
+      content: draft.content,
+      sourceLabel: "Analytics history",
+      sourceTopic: draft.prompt,
+      scoringResult: draft.scoringResult,
+      createdAt: Date.now(),
+    });
+  };
+
   return (
     <div className="max-w-5xl space-y-6">
       {/* Draft history */}
@@ -207,6 +219,12 @@ export default function AnalyticsTab({ profile, settings }: Props) {
                       >
                         Copy draft
                       </button>
+                      <button
+                        onClick={() => reuseDraft(draft)}
+                        className="text-xs text-linkedin-blue underline"
+                      >
+                        Reuse in Draft
+                      </button>
                       <span className="text-xs text-gray-400">
                         Model: {draft.model}
                       </span>
@@ -271,6 +289,12 @@ export default function AnalyticsTab({ profile, settings }: Props) {
                         className="text-xs text-linkedin-blue underline"
                       >
                         Copy draft
+                      </button>
+                      <button
+                        onClick={() => reuseDraft(draft)}
+                        className="text-xs text-linkedin-blue underline"
+                      >
+                        Reuse in Draft
                       </button>
                       <span className="text-xs text-gray-400">
                         Variants: {draft.variants.length}
