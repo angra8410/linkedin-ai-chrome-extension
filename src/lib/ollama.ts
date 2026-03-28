@@ -6,6 +6,18 @@ function normalizeBaseUrl(baseUrl: string): string {
   return (baseUrl || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
 }
 
+function buildErrorMessage(error: unknown): string {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return "Request timed out before Ollama responded.";
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unknown error";
+}
+
 async function fetchWithTimeout(
   input: RequestInfo | URL,
   init: RequestInit = {},
@@ -24,6 +36,13 @@ async function fetchWithTimeout(
   }
 }
 
+async function fetchNoTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+): Promise<Response> {
+  return fetch(input, init);
+}
+
 // ─── Health Check ─────────────────────────────────────────────────────────────
 
 export async function checkOllamaStatus(
@@ -32,12 +51,16 @@ export async function checkOllamaStatus(
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
   try {
-    const res = await fetchWithTimeout(`${normalizedBaseUrl}/api/tags`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
+    const res = await fetchWithTimeout(
+      `${normalizedBaseUrl}/api/tags`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
       },
-    }, 5000);
+      5000
+    );
 
     if (!res.ok) return "error";
 
@@ -56,12 +79,16 @@ export async function listModels(
 ): Promise<OllamaModel[]> {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
-  const res = await fetchWithTimeout(`${normalizedBaseUrl}/api/tags`, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
+  const res = await fetchWithTimeout(
+    `${normalizedBaseUrl}/api/tags`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
     },
-  }, 8000);
+    8000
+  );
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
@@ -82,19 +109,24 @@ export async function generate(
 ): Promise<string> {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
-  const res = await fetchWithTimeout(`${normalizedBaseUrl}/api/generate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      system: systemMessage,
-      prompt,
-      stream: false,
-    }),
-  }, 120000);
+  let res: Response;
+  try {
+    res = await fetchNoTimeout(`${normalizedBaseUrl}/api/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        system: systemMessage,
+        prompt,
+        stream: false,
+      }),
+    });
+  } catch (error) {
+    throw new Error(`Ollama generate request failed: ${buildErrorMessage(error)}`);
+  }
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
@@ -102,7 +134,7 @@ export async function generate(
   }
 
   const data = await res.json();
-  return String(data.response ?? "");
+  return String(data?.response ?? "");
 }
 
 // ─── Generate (Streaming) ─────────────────────────────────────────────────────
@@ -117,19 +149,24 @@ export async function generateStream(
 ): Promise<void> {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
-  const res = await fetch(`${normalizedBaseUrl}/api/generate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      system: systemMessage,
-      prompt,
-      stream: true,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetchNoTimeout(`${normalizedBaseUrl}/api/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        system: systemMessage,
+        prompt,
+        stream: true,
+      }),
+    });
+  } catch (error) {
+    throw new Error(`Ollama streaming request failed: ${buildErrorMessage(error)}`);
+  }
 
   if (!res.ok || !res.body) {
     const err = await res.text().catch(() => "");
@@ -138,28 +175,47 @@ export async function generateStream(
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
+  let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    const lines = decoder.decode(value, { stream: true }).split("\n").filter(Boolean);
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      try {
-        const chunk: OllamaStreamChunk = JSON.parse(line);
-        if (chunk.response) onChunk(chunk.response);
-        if (chunk.done) {
-          onDone();
-          return;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        try {
+          const chunk: OllamaStreamChunk = JSON.parse(trimmed);
+          if (chunk.response) onChunk(chunk.response);
+          if (chunk.done) {
+            onDone();
+            return;
+          }
+        } catch {
+          // ignore malformed chunk fragments
         }
-      } catch {
-        // ignore malformed chunk
       }
     }
-  }
 
-  onDone();
+    if (buffer.trim()) {
+      try {
+        const chunk: OllamaStreamChunk = JSON.parse(buffer.trim());
+        if (chunk.response) onChunk(chunk.response);
+      } catch {
+        // ignore trailing malformed chunk
+      }
+    }
+
+    onDone();
+  } catch (error) {
+    throw new Error(`Ollama stream read failed: ${buildErrorMessage(error)}`);
+  }
 }
 
 // ─── Chat API (for multi-turn) ────────────────────────────────────────────────
@@ -176,18 +232,23 @@ export async function chat(
 ): Promise<string> {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
-  const res = await fetchWithTimeout(`${normalizedBaseUrl}/api/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: false,
-    }),
-  }, 120000);
+  let res: Response;
+  try {
+    res = await fetchNoTimeout(`${normalizedBaseUrl}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+      }),
+    });
+  } catch (error) {
+    throw new Error(`Ollama chat request failed: ${buildErrorMessage(error)}`);
+  }
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
