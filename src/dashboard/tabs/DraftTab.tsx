@@ -13,6 +13,11 @@ import type { UserBrandProfile, AppSettings, PostDraft } from "../../types";
 
 type Mode = "post" | "recruiter" | "hooks" | "cta";
 
+type DraftVariant = {
+  style: RewriteStyle;
+  content: string;
+};
+
 const REWRITE_STYLES: RewriteStyle[] = [
   "concise",
   "story",
@@ -22,6 +27,12 @@ const REWRITE_STYLES: RewriteStyle[] = [
   "linkedin-polish",
   "shorter",
   "more-human",
+];
+
+const AUTO_VARIANT_STYLES: RewriteStyle[] = [
+  "linkedin-polish",
+  "more-human",
+  "shorter",
 ];
 
 interface Props {
@@ -39,7 +50,9 @@ export default function DraftTab({ profile, settings }: Props) {
   const [topic, setTopic] = useState("");
   const [pillar, setPillar] = useState("");
   const [output, setOutput] = useState("");
+  const [variants, setVariants] = useState<DraftVariant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [variantLoading, setVariantLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [rewriteStyle, setRewriteStyle] = useState<RewriteStyle>("linkedin-polish");
   const [rewriteOutput, setRewriteOutput] = useState("");
@@ -49,7 +62,7 @@ export default function DraftTab({ profile, settings }: Props) {
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
   const streamingEnabled = settings?.streamingEnabled ?? true;
 
-  const canGenerate = !!profile && !!topic.trim() && !loading;
+  const canGenerate = !!profile && !!topic.trim() && !loading && !variantLoading;
 
   const buildPrompt = () => {
     if (!profile) return { system: "", user: "" };
@@ -73,10 +86,67 @@ export default function DraftTab({ profile, settings }: Props) {
     return promptGenerateCTAs(topic);
   };
 
+  const runGenerate = async (
+    user: string,
+    system: string
+  ): Promise<string> => {
+    if (streamingEnabled) {
+      let finalText = "";
+
+      await generateStream(
+        user,
+        system,
+        model,
+        (chunk) => {
+          finalText += chunk;
+        },
+        () => {},
+        ollamaUrl
+      );
+
+      return finalText.trim();
+    }
+
+    const text = await generate(user, system, model, ollamaUrl);
+    return text.trim();
+  };
+
+  const generateVariants = async (baseDraft: string) => {
+    if (!profile || (mode !== "post" && mode !== "recruiter")) {
+      setVariants([]);
+      return;
+    }
+
+    setVariantLoading(true);
+    setVariants([]);
+
+    const nextVariants: DraftVariant[] = [];
+
+    for (const style of AUTO_VARIANT_STYLES) {
+      try {
+        const { system, user } = promptRewritePost(profile, baseDraft, style);
+        const rewritten = await runGenerate(user, system);
+
+        if (rewritten) {
+          nextVariants.push({
+            style,
+            content: rewritten,
+          });
+          setVariants([...nextVariants]);
+        }
+      } catch (error) {
+        console.error(`Auto variant generation failed for ${style}:`, error);
+      }
+    }
+
+    setVariantLoading(false);
+  };
+
   const generateDraft = async () => {
     if (!profile) return;
 
     setOutput("");
+    setVariants([]);
     setSaved(false);
     setRewriteOutput("");
     setLoading(true);
@@ -101,20 +171,35 @@ export default function DraftTab({ profile, settings }: Props) {
           ollamaUrl
         );
 
-        if (!finalText.trim()) {
+        const trimmed = finalText.trim();
+
+        if (!trimmed) {
           setOutput(
             "⚠️ Ollama responded, but no text was returned. Try another model like llama3.1:latest or gemma2:9b."
           );
           setLoading(false);
+          return;
+        }
+
+        setOutput(trimmed);
+
+        if (mode === "post" || mode === "recruiter") {
+          await generateVariants(trimmed);
         }
       } else {
         const text = await generate(user, system, model, ollamaUrl);
+        const trimmed = text?.trim();
+
         setOutput(
-          text?.trim()
-            ? text
+          trimmed
+            ? trimmed
             : "⚠️ Ollama responded, but no text was returned."
         );
         setLoading(false);
+
+        if (trimmed && (mode === "post" || mode === "recruiter")) {
+          await generateVariants(trimmed);
+        }
       }
     } catch (error) {
       console.error("Draft generation failed:", error);
@@ -122,6 +207,7 @@ export default function DraftTab({ profile, settings }: Props) {
         `⚠️ Draft generation failed.\nModel: ${model}\nURL: ${ollamaUrl}\nDetails: ${getErrorMessage(error)}`
       );
       setLoading(false);
+      setVariantLoading(false);
     }
   };
 
@@ -176,7 +262,10 @@ export default function DraftTab({ profile, settings }: Props) {
       content: output,
       pillar: pillar || (profile?.contentPillars[0] ?? ""),
       model,
-      variants: rewriteOutput.trim() ? [rewriteOutput] : [],
+      variants: [
+        ...variants.map((v) => v.content),
+        ...(rewriteOutput.trim() ? [rewriteOutput] : []),
+      ],
       status: "draft",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -186,8 +275,14 @@ export default function DraftTab({ profile, settings }: Props) {
     setSaved(true);
   };
 
+  const useAsMainDraft = (text: string) => {
+    setOutput(text);
+    setSaved(false);
+    setRewriteOutput("");
+  };
+
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       {!profile && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
           Set up your brand profile to unlock personalized AI generation.
@@ -201,6 +296,7 @@ export default function DraftTab({ profile, settings }: Props) {
             onClick={() => {
               setMode(m);
               setOutput("");
+              setVariants([]);
               setRewriteOutput("");
             }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
@@ -279,7 +375,7 @@ export default function DraftTab({ profile, settings }: Props) {
       {(output || loading) && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 text-sm">Output</h3>
+            <h3 className="font-semibold text-gray-800 text-sm">Main Output</h3>
             <span className="text-xs text-gray-400">{output.length} chars</span>
           </div>
 
@@ -306,56 +402,108 @@ export default function DraftTab({ profile, settings }: Props) {
               </button>
             </div>
           )}
+        </div>
+      )}
 
-          {output && !loading && (mode === "post" || mode === "recruiter") && (
-            <div className="pt-4 border-t border-gray-100 space-y-3">
-              <h4 className="text-sm font-semibold text-gray-700">
-                Rewrite in a different style
-              </h4>
+      {(variantLoading || variants.length > 0) && (mode === "post" || mode === "recruiter") && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-gray-800 text-sm">
+              Auto-generated variants
+            </h3>
+            {variantLoading && (
+              <span className="text-xs text-gray-400 animate-pulse">
+                Creating linkedin-polish, more-human, and shorter...
+              </span>
+            )}
+          </div>
 
-              <div className="flex gap-2 flex-wrap">
-                {REWRITE_STYLES.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setRewriteStyle(s)}
-                    className={`px-3 py-1 text-xs rounded-full border transition ${
-                      rewriteStyle === s
-                        ? "bg-linkedin-blue text-white border-linkedin-blue"
-                        : "text-gray-500 border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={handleRewrite}
-                disabled={rewriteLoading}
-                className="px-4 py-2 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40"
+          <div className="grid gap-4">
+            {variants.map((variant) => (
+              <div
+                key={variant.style}
+                className="border border-gray-200 rounded-xl p-4 space-y-3 bg-blue-50/40"
               >
-                {rewriteLoading ? "Rewriting..." : "↺ Rewrite"}
-              </button>
-
-              {rewriteOutput && (
-                <div className="bg-blue-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap">
-                  {rewriteOutput}
-                  <div className="mt-3 flex gap-3 flex-wrap">
-                    <button
-                      onClick={() => navigator.clipboard.writeText(rewriteOutput)}
-                      className="text-xs text-linkedin-blue underline"
-                    >
-                      Copy rewrite
-                    </button>
-                    <button
-                      onClick={() => setOutput(rewriteOutput)}
-                      className="text-xs text-linkedin-blue underline"
-                    >
-                      Use rewrite as main draft
-                    </button>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-gray-800 capitalize">
+                    {variant.style}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {variant.content.length} chars
                   </div>
                 </div>
-              )}
+
+                <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {variant.content}
+                </div>
+
+                <div className="flex gap-3 flex-wrap">
+                  <button
+                    onClick={() => navigator.clipboard.writeText(variant.content)}
+                    className="text-xs text-linkedin-blue underline"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    onClick={() => useAsMainDraft(variant.content)}
+                    className="text-xs text-linkedin-blue underline"
+                  >
+                    Use as main draft
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {output && !loading && (mode === "post" || mode === "recruiter") && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+          <h4 className="text-sm font-semibold text-gray-700">
+            Manual rewrite in a different style
+          </h4>
+
+          <div className="flex gap-2 flex-wrap">
+            {REWRITE_STYLES.map((s) => (
+              <button
+                key={s}
+                onClick={() => setRewriteStyle(s)}
+                className={`px-3 py-1 text-xs rounded-full border transition ${
+                  rewriteStyle === s
+                    ? "bg-linkedin-blue text-white border-linkedin-blue"
+                    : "text-gray-500 border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={handleRewrite}
+            disabled={rewriteLoading}
+            className="px-4 py-2 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40"
+          >
+            {rewriteLoading ? "Rewriting..." : "↺ Rewrite"}
+          </button>
+
+          {rewriteOutput && (
+            <div className="bg-blue-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap">
+              {rewriteOutput}
+              <div className="mt-3 flex gap-3 flex-wrap">
+                <button
+                  onClick={() => navigator.clipboard.writeText(rewriteOutput)}
+                  className="text-xs text-linkedin-blue underline"
+                >
+                  Copy rewrite
+                </button>
+                <button
+                  onClick={() => useAsMainDraft(rewriteOutput)}
+                  className="text-xs text-linkedin-blue underline"
+                >
+                  Use rewrite as main draft
+                </button>
+              </div>
             </div>
           )}
         </div>
