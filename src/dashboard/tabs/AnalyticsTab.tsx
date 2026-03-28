@@ -6,6 +6,7 @@ import {
   getRecentLogs,
   getRecentDrafts,
   getScoredDrafts,
+  deleteDraft,
 } from "../../lib/db";
 import type {
   UserBrandProfile,
@@ -43,7 +44,8 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
   const [insight, setInsight] = useState("");
   const [insightLoading, setInsightLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
 
   const model = settings?.defaultModel ?? "llama3.1:latest";
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
@@ -60,7 +62,7 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
       setRecentDrafts(drafts);
       setScoredDrafts(scored);
     })();
-  }, [saved]);
+  }, [refreshKey]);
 
   const handleSave = async () => {
     if (!form.postTitle.trim()) return;
@@ -74,7 +76,7 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
     });
 
     setForm({ ...EMPTY_LOG });
-    setSaved((p) => !p);
+    setRefreshKey((p) => p + 1);
     setSaving(false);
   };
 
@@ -98,15 +100,35 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
       setInsight(
         `📌 Top pillar: ${parsed.topPillar}\n` +
-        `📐 Top format: ${parsed.topFormat}\n` +
-        `⏰ Best timing: ${parsed.bestTiming}\n\n` +
-        `✅ Do more: ${parsed.recommendation}\n` +
-        `🚫 Stop doing: ${parsed.stopDoing}`
+          `📐 Top format: ${parsed.topFormat}\n` +
+          `⏰ Best timing: ${parsed.bestTiming}\n\n` +
+          `✅ Do more: ${parsed.recommendation}\n` +
+          `🚫 Stop doing: ${parsed.stopDoing}`
       );
     } catch {
       setInsight("Could not parse insights. Try again with more logs.");
     } finally {
       setInsightLoading(false);
+    }
+  };
+
+  const handleDeleteDraft = async (draft: PostDraft) => {
+    const preview =
+      draft.prompt?.trim() ||
+      draft.content.slice(0, 60).replace(/\s+/g, " ").trim();
+
+    const confirmed = window.confirm(
+      `Delete this draft?\n\n${preview}${preview.length >= 60 ? "..." : ""}`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingDraftId(draft.id);
+      await deleteDraft(draft.id);
+      setRefreshKey((p) => p + 1);
+    } finally {
+      setDeletingDraftId(null);
     }
   };
 
@@ -181,59 +203,70 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
               </div>
             ) : (
               <div className="space-y-3">
-                {scoredDrafts.map((draft) => (
-                  <div
-                    key={draft.id}
-                    className="border border-gray-200 rounded-xl p-4 bg-green-50/30 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="text-xs text-gray-400">
-                        {formatDate(draft.createdAt)}
-                      </div>
-                      <div className="flex gap-2 flex-wrap justify-end">
-                        <span
-                          className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
-                            draft.scoringResult?.totalScore
-                          )}`}
-                        >
-                          Score {draft.scoringResult?.totalScore?.toFixed(1) ?? "—"}
-                        </span>
-                        <span
-                          className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
-                            draft.status
-                          )}`}
-                        >
-                          {draft.status}
-                        </span>
-                      </div>
-                    </div>
+                {scoredDrafts.map((draft) => {
+                  const isDeleting = deletingDraftId === draft.id;
 
-                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {truncate(draft.content, 260)}
-                    </div>
+                  return (
+                    <div
+                      key={draft.id}
+                      className="border border-gray-200 rounded-xl p-4 bg-green-50/30 space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-xs text-gray-400">
+                          {formatDate(draft.createdAt)}
+                        </div>
+                        <div className="flex gap-2 flex-wrap justify-end">
+                          <span
+                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
+                              draft.scoringResult?.totalScore
+                            )}`}
+                          >
+                            Score {draft.scoringResult?.totalScore?.toFixed(1) ?? "—"}
+                          </span>
+                          <span
+                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
+                              draft.status
+                            )}`}
+                          >
+                            {draft.status}
+                          </span>
+                        </div>
+                      </div>
 
-                    <div className="flex gap-3 flex-wrap">
-                      <button
-                        onClick={() => navigator.clipboard.writeText(draft.content)}
-                        className="text-xs text-linkedin-blue underline"
-                      >
-                        Copy draft
-                      </button>
-                      <button
-                        onClick={() => reuseDraft(draft)}
-                        className="text-xs text-linkedin-blue underline"
-                      >
-                        Reuse in Draft
-                      </button>
-                      <span className="text-xs text-gray-400">
-                        Model: {draft.model}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        Pillar: {draft.pillar || "—"}
-                      </span>
+                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {truncate(draft.content, 260)}
+                      </div>
+
+                      <div className="flex gap-3 flex-wrap">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(draft.content)}
+                          className="text-xs text-linkedin-blue underline"
+                        >
+                          Copy draft
+                        </button>
+                        <button
+                          onClick={() => reuseDraft(draft)}
+                          className="text-xs text-linkedin-blue underline"
+                        >
+                          Reuse in Draft
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDraft(draft)}
+                          disabled={isDeleting}
+                          className="text-xs text-red-600 underline disabled:opacity-50"
+                        >
+                          {isDeleting ? "Deleting..." : "Delete draft"}
+                        </button>
+                        <span className="text-xs text-gray-400">
+                          Model: {draft.model}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          Pillar: {draft.pillar || "—"}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -250,61 +283,72 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
               </div>
             ) : (
               <div className="space-y-3">
-                {recentDrafts.map((draft) => (
-                  <div
-                    key={draft.id}
-                    className="border border-gray-200 rounded-xl p-4 bg-gray-50/60 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="text-xs text-gray-400">
-                        {formatDate(draft.createdAt)}
-                      </div>
-                      <div className="flex gap-2 flex-wrap justify-end">
-                        {draft.scoringResult && (
+                {recentDrafts.map((draft) => {
+                  const isDeleting = deletingDraftId === draft.id;
+
+                  return (
+                    <div
+                      key={draft.id}
+                      className="border border-gray-200 rounded-xl p-4 bg-gray-50/60 space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-xs text-gray-400">
+                          {formatDate(draft.createdAt)}
+                        </div>
+                        <div className="flex gap-2 flex-wrap justify-end">
+                          {draft.scoringResult && (
+                            <span
+                              className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
+                                draft.scoringResult.totalScore
+                              )}`}
+                            >
+                              {draft.scoringResult.totalScore.toFixed(1)}/10
+                            </span>
+                          )}
                           <span
-                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
-                              draft.scoringResult.totalScore
+                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
+                              draft.status
                             )}`}
                           >
-                            {draft.scoringResult.totalScore.toFixed(1)}/10
+                            {draft.status}
                           </span>
-                        )}
-                        <span
-                          className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
-                            draft.status
-                          )}`}
+                        </div>
+                      </div>
+
+                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {truncate(draft.content, 220)}
+                      </div>
+
+                      <div className="flex gap-3 flex-wrap">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(draft.content)}
+                          className="text-xs text-linkedin-blue underline"
                         >
-                          {draft.status}
+                          Copy draft
+                        </button>
+                        <button
+                          onClick={() => reuseDraft(draft)}
+                          className="text-xs text-linkedin-blue underline"
+                        >
+                          Reuse in Draft
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDraft(draft)}
+                          disabled={isDeleting}
+                          className="text-xs text-red-600 underline disabled:opacity-50"
+                        >
+                          {isDeleting ? "Deleting..." : "Delete draft"}
+                        </button>
+                        <span className="text-xs text-gray-400">
+                          Variants: {draft.variants.length}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          Pillar: {draft.pillar || "—"}
                         </span>
                       </div>
                     </div>
-
-                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {truncate(draft.content, 220)}
-                    </div>
-
-                    <div className="flex gap-3 flex-wrap">
-                      <button
-                        onClick={() => navigator.clipboard.writeText(draft.content)}
-                        className="text-xs text-linkedin-blue underline"
-                      >
-                        Copy draft
-                      </button>
-                      <button
-                        onClick={() => reuseDraft(draft)}
-                        className="text-xs text-linkedin-blue underline"
-                      >
-                        Reuse in Draft
-                      </button>
-                      <span className="text-xs text-gray-400">
-                        Variants: {draft.variants.length}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        Pillar: {draft.pillar || "—"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
