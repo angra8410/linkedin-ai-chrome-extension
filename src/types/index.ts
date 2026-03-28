@@ -126,7 +126,7 @@ export interface WeeklyStrategySummary {
   createdAt: number;
 }
 
-// ─── Draft ↔ Score Bridge ────────────────────────────────────────────────────
+// ─── Draft ↔ Score / Planner Bridge ──────────────────────────────────────────
 
 export interface ScoreComparisonPayload {
   main: string;
@@ -141,7 +141,9 @@ export interface DraftPromotionPayload {
   content: string;
   sourceLabel?: string;
   sourceTopic?: string;
+  sourcePillar?: string;
   scoringResult?: ScoringResult;
+  autoGenerate?: boolean;
   createdAt: number;
 }
 

@@ -90,7 +90,7 @@ export default function PlannerTab({ profile, settings, onSendToDraft }: Props) 
     } catch (error) {
       console.error("Generate pillars failed:", error);
 
-      const fallbackPillars = (profile.contentPillars ?? []).map((name, index) => ({
+      const fallbackPillars = (profile.contentPillars ?? []).map((name) => ({
         id: crypto.randomUUID(),
         name,
         description: `Core content pillar for ${profile.targetTitle} positioning.`,
@@ -165,7 +165,6 @@ export default function PlannerTab({ profile, settings, onSendToDraft }: Props) 
   }) => {
     const topic = `${post.topicIdea}
 
-Planned pillar: ${post.pillar}
 Planned format: ${post.format}
 Planned day: ${DAYS[post.dayOfWeek - 1] ?? "Unknown"}
 Suggested time: ${RECOMMENDED_SLOTS[post.dayOfWeek] ?? "10:00 AM"}`;
@@ -174,6 +173,31 @@ Suggested time: ${RECOMMENDED_SLOTS[post.dayOfWeek] ?? "10:00 AM"}`;
       content: "",
       sourceLabel: "Planner topic",
       sourceTopic: topic,
+      sourcePillar: post.pillar,
+      createdAt: Date.now(),
+    });
+  };
+
+  const handleGenerateBestDraftFromPlanner = (post: {
+    topicIdea: string;
+    pillar: string;
+    format: string;
+    dayOfWeek: number;
+  }) => {
+    const topic = `${post.topicIdea}
+
+Planned format: ${post.format}
+Planned day: ${DAYS[post.dayOfWeek - 1] ?? "Unknown"}
+Suggested time: ${RECOMMENDED_SLOTS[post.dayOfWeek] ?? "10:00 AM"}
+
+Write this as a publishable LinkedIn post for my target audience.`;
+
+    onSendToDraft({
+      content: "",
+      sourceLabel: "Planner auto-pipeline",
+      sourceTopic: topic,
+      sourcePillar: post.pillar,
+      autoGenerate: true,
       createdAt: Date.now(),
     });
   };
@@ -320,6 +344,12 @@ Suggested time: ${RECOMMENDED_SLOTS[post.dayOfWeek] ?? "10:00 AM"}`;
                       className="text-xs text-linkedin-blue underline"
                     >
                       Send planned topic to Draft
+                    </button>
+                    <button
+                      onClick={() => handleGenerateBestDraftFromPlanner(post)}
+                      className="text-xs text-linkedin-blue underline"
+                    >
+                      Generate best draft automatically
                     </button>
                   </div>
                 </div>

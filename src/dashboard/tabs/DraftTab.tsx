@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generate, generateStream } from "../../lib/ollama";
 import {
   promptGeneratePost,
@@ -6,6 +6,7 @@ import {
   promptRewritePost,
   promptGenerateHooks,
   promptGenerateCTAs,
+  promptScoreDraft,
   type RewriteStyle,
 } from "../../lib/prompts";
 import { saveDraft } from "../../lib/db";
@@ -23,6 +24,13 @@ type Mode = "post" | "recruiter" | "hooks" | "cta";
 type DraftVariant = {
   style: RewriteStyle;
   content: string;
+  score?: ScoringResult;
+};
+
+type ScoredCandidate = {
+  label: string;
+  content: string;
+  score: ScoringResult;
 };
 
 const REWRITE_STYLES: RewriteStyle[] = [
@@ -54,6 +62,31 @@ function getErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
+function parseScoreResponse(raw: string, model: string): ScoringResult {
+  const cleaned = raw.replace(/```json|```/gi, "").trim();
+  const parsed = JSON.parse(cleaned);
+
+  const scores = parsed.scores as Record<string, number>;
+  const totalScore =
+    Object.values(scores).reduce((a, b) => a + b, 0) / Object.keys(scores).length;
+
+  return {
+    id: crypto.randomUUID(),
+    draftId: "",
+    scores: {
+      hook: scores.hook ?? 0,
+      clarity: scores.clarity ?? 0,
+      relevance: scores.relevance ?? 0,
+      cta: scores.cta ?? 0,
+      authenticity: scores.authenticity ?? 0,
+    },
+    totalScore: Math.round(totalScore * 10) / 10,
+    feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
+    model,
+    createdAt: Date.now(),
+  };
+}
+
 export default function DraftTab({
   profile,
   settings,
@@ -73,6 +106,8 @@ export default function DraftTab({
   const [rewriteLoading, setRewriteLoading] = useState(false);
   const [lastSeedAt, setLastSeedAt] = useState<number | null>(null);
   const [attachedScore, setAttachedScore] = useState<ScoringResult | undefined>(undefined);
+  const [workflowMessage, setWorkflowMessage] = useState("");
+  const autoRunRef = useRef<number | null>(null);
 
   const model = settings?.defaultModel ?? "llama3.1:latest";
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
@@ -90,13 +125,40 @@ export default function DraftTab({
     setSaved(false);
     setMode("post");
     setAttachedScore(seedPayload.scoringResult);
+    setWorkflowMessage("");
 
     if (seedPayload.sourceTopic) {
       setTopic(seedPayload.sourceTopic);
     }
 
+    if (seedPayload.sourcePillar) {
+      setPillar(seedPayload.sourcePillar);
+    }
+
     setLastSeedAt(seedPayload.createdAt);
+
+    if (seedPayload.autoGenerate) {
+      autoRunRef.current = seedPayload.createdAt;
+      setWorkflowMessage("Planner topic received. Generating and scoring drafts automatically...");
+    } else {
+      autoRunRef.current = null;
+    }
   }, [seedPayload, lastSeedAt]);
+
+  useEffect(() => {
+    const shouldAutoRun =
+      !!profile &&
+      !!seedPayload?.autoGenerate &&
+      !!topic.trim() &&
+      autoRunRef.current === seedPayload.createdAt &&
+      !loading &&
+      !variantLoading;
+
+    if (!shouldAutoRun) return;
+
+    autoRunRef.current = null;
+    void generateBestDraftPipeline();
+  }, [profile, seedPayload, topic]);
 
   const buildPrompt = () => {
     if (!profile) return { system: "", user: "" };
@@ -120,7 +182,11 @@ export default function DraftTab({
     return promptGenerateCTAs(topic);
   };
 
-  const runGenerate = async (user: string, system: string): Promise<string> => {
+  const runGenerate = async (
+    user: string,
+    system: string,
+    onProgress?: (text: string) => void
+  ): Promise<string> => {
     if (streamingEnabled) {
       let finalText = "";
 
@@ -130,6 +196,7 @@ export default function DraftTab({
         model,
         (chunk) => {
           finalText += chunk;
+          onProgress?.(finalText);
         },
         () => {},
         ollamaUrl
@@ -139,13 +206,21 @@ export default function DraftTab({
     }
 
     const text = await generate(user, system, model, ollamaUrl);
-    return text.trim();
+    const trimmed = text.trim();
+    onProgress?.(trimmed);
+    return trimmed;
   };
 
-  const generateVariants = async (baseDraft: string) => {
+  const scoreCandidate = async (content: string): Promise<ScoringResult> => {
+    const { system, user } = promptScoreDraft(content);
+    const raw = await generate(user, system, model, ollamaUrl);
+    return parseScoreResponse(raw, model);
+  };
+
+  const generateVariants = async (baseDraft: string): Promise<DraftVariant[]> => {
     if (!profile || (mode !== "post" && mode !== "recruiter")) {
       setVariants([]);
-      return;
+      return [];
     }
 
     setVariantLoading(true);
@@ -171,6 +246,7 @@ export default function DraftTab({
     }
 
     setVariantLoading(false);
+    return nextVariants;
   };
 
   const generateDraft = async () => {
@@ -181,63 +257,115 @@ export default function DraftTab({
     setSaved(false);
     setRewriteOutput("");
     setAttachedScore(undefined);
+    setWorkflowMessage("");
     setLoading(true);
 
     const { system, user } = buildPrompt();
 
     try {
-      if (streamingEnabled) {
-        let finalText = "";
+      const trimmed = await runGenerate(user, system, setOutput);
 
-        await generateStream(
-          user,
-          system,
-          model,
-          (chunk) => {
-            finalText += chunk;
-            setOutput(finalText);
-          },
-          () => {
-            setLoading(false);
-          },
-          ollamaUrl
-        );
-
-        const trimmed = finalText.trim();
-
-        if (!trimmed) {
-          setOutput(
-            "⚠️ Ollama responded, but no text was returned. Try another model like llama3.1:latest or gemma2:9b."
-          );
-          setLoading(false);
-          return;
-        }
-
-        setOutput(trimmed);
-
-        if (mode === "post" || mode === "recruiter") {
-          await generateVariants(trimmed);
-        }
-      } else {
-        const text = await generate(user, system, model, ollamaUrl);
-        const trimmed = text?.trim();
-
+      if (!trimmed) {
         setOutput(
-          trimmed
-            ? trimmed
-            : "⚠️ Ollama responded, but no text was returned."
+          "⚠️ Ollama responded, but no text was returned. Try another model like llama3.1:latest or gemma2:9b."
         );
         setLoading(false);
+        return;
+      }
 
-        if (trimmed && (mode === "post" || mode === "recruiter")) {
-          await generateVariants(trimmed);
-        }
+      setOutput(trimmed);
+      setLoading(false);
+
+      if (mode === "post" || mode === "recruiter") {
+        await generateVariants(trimmed);
       }
     } catch (error) {
       console.error("Draft generation failed:", error);
       setOutput(
         `⚠️ Draft generation failed.\nModel: ${model}\nURL: ${ollamaUrl}\nDetails: ${getErrorMessage(error)}`
       );
+      setLoading(false);
+      setVariantLoading(false);
+    }
+  };
+
+  const generateBestDraftPipeline = async () => {
+    if (!profile || !topic.trim()) return;
+
+    setOutput("");
+    setVariants([]);
+    setSaved(false);
+    setRewriteOutput("");
+    setAttachedScore(undefined);
+    setLoading(true);
+    setVariantLoading(false);
+
+    try {
+      const { system, user } = buildPrompt();
+
+      const mainDraft = await runGenerate(user, system, setOutput);
+
+      if (!mainDraft) {
+        setOutput("⚠️ Ollama responded, but no text was returned.");
+        setWorkflowMessage("Automatic pipeline stopped because no draft text was returned.");
+        setLoading(false);
+        return;
+      }
+
+      setOutput(mainDraft);
+      setLoading(false);
+      setWorkflowMessage("Main draft generated. Creating variants...");
+
+      const generatedVariants = await generateVariants(mainDraft);
+
+      setWorkflowMessage("Variants generated. Scoring all candidates...");
+
+      const candidates: ScoredCandidate[] = [];
+      const mainScore = await scoreCandidate(mainDraft);
+      candidates.push({
+        label: "Main draft",
+        content: mainDraft,
+        score: mainScore,
+      });
+
+      const scoredVariants: DraftVariant[] = [];
+      for (const variant of generatedVariants) {
+        try {
+          const score = await scoreCandidate(variant.content);
+          scoredVariants.push({ ...variant, score });
+          candidates.push({
+            label: variant.style,
+            content: variant.content,
+            score,
+          });
+        } catch (error) {
+          console.error(`Scoring failed for ${variant.style}:`, error);
+          scoredVariants.push(variant);
+        }
+      }
+
+      setVariants(scoredVariants);
+
+      const winner = [...candidates].sort(
+        (a, b) => b.score.totalScore - a.score.totalScore
+      )[0];
+
+      if (winner) {
+        setOutput(winner.content);
+        setAttachedScore(winner.score);
+        setSaved(false);
+        setWorkflowMessage(
+          `Best draft selected automatically: ${winner.label} (${winner.score.totalScore.toFixed(1)}/10).`
+        );
+      } else {
+        setWorkflowMessage("Drafts were generated, but automatic scoring did not complete.");
+      }
+    } catch (error) {
+      console.error("Automatic planner-to-draft pipeline failed:", error);
+      setWorkflowMessage(`Automatic pipeline failed. Details: ${getErrorMessage(error)}`);
+      setLoading(false);
+      setVariantLoading(false);
+    } finally {
       setLoading(false);
       setVariantLoading(false);
     }
@@ -252,32 +380,9 @@ export default function DraftTab({
     const { system, user } = promptRewritePost(profile, output, rewriteStyle);
 
     try {
-      if (streamingEnabled) {
-        let finalText = "";
-
-        await generateStream(
-          user,
-          system,
-          model,
-          (chunk) => {
-            finalText += chunk;
-            setRewriteOutput(finalText);
-          },
-          () => {
-            setRewriteLoading(false);
-          },
-          ollamaUrl
-        );
-
-        if (!finalText.trim()) {
-          setRewriteOutput("⚠️ Rewrite returned no text.");
-          setRewriteLoading(false);
-        }
-      } else {
-        const text = await generate(user, system, model, ollamaUrl);
-        setRewriteOutput(text?.trim() ? text : "⚠️ Rewrite returned no text.");
-        setRewriteLoading(false);
-      }
+      const text = await runGenerate(user, system, setRewriteOutput);
+      setRewriteOutput(text?.trim() ? text : "⚠️ Rewrite returned no text.");
+      setRewriteLoading(false);
     } catch (error) {
       console.error("Rewrite failed:", error);
       setRewriteOutput(`⚠️ Rewrite failed.\nDetails: ${getErrorMessage(error)}`);
@@ -313,6 +418,7 @@ export default function DraftTab({
     setSaved(false);
     setRewriteOutput("");
     setAttachedScore(undefined);
+    setWorkflowMessage("Variant promoted to main draft. Score detached until rescored.");
   };
 
   const handleSendAllToScore = () => {
@@ -346,6 +452,7 @@ export default function DraftTab({
               setVariants([]);
               setRewriteOutput("");
               setAttachedScore(undefined);
+              setWorkflowMessage("");
             }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
               mode === m
@@ -361,10 +468,15 @@ export default function DraftTab({
         ))}
       </div>
 
-      {seedPayload && lastSeedAt === seedPayload.createdAt && (
+      {seedPayload && lastSeedAt === seedPayload.createdAt && !seedPayload.autoGenerate && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
-          Best-scoring draft received from Score tab
-          {seedPayload.sourceLabel ? ` · ${seedPayload.sourceLabel}` : ""}.
+          Draft received from {seedPayload.sourceLabel ?? "another tab"}.
+        </div>
+      )}
+
+      {workflowMessage && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+          {workflowMessage}
         </div>
       )}
 
@@ -378,7 +490,7 @@ export default function DraftTab({
           </label>
           <textarea
             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
-            rows={3}
+            rows={4}
             placeholder={
               mode === "post"
                 ? "e.g. Why data quality matters more than data volume"
@@ -418,13 +530,25 @@ export default function DraftTab({
           <span className="font-medium">{streamingEnabled ? "on" : "off"}</span>
         </div>
 
-        <button
-          onClick={generateDraft}
-          disabled={!canGenerate}
-          className="w-full bg-linkedin-blue text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-linkedin-dark transition"
-        >
-          {loading ? "Generating..." : "✦ Generate"}
-        </button>
+        <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={generateDraft}
+            disabled={!canGenerate}
+            className="flex-1 min-w-[220px] bg-linkedin-blue text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-linkedin-dark transition"
+          >
+            {loading ? "Generating..." : "✦ Generate"}
+          </button>
+
+          {(mode === "post" || mode === "recruiter") && (
+            <button
+              onClick={generateBestDraftPipeline}
+              disabled={!canGenerate}
+              className="flex-1 min-w-[220px] border border-linkedin-blue text-linkedin-blue font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-linkedin-light transition"
+            >
+              {loading || variantLoading ? "Running auto-pipeline..." : "⚡ Generate Best Draft Automatically"}
+            </button>
+          )}
+        </div>
       </div>
 
       {(output || loading) && (
@@ -499,8 +623,15 @@ export default function DraftTab({
                   <div className="text-sm font-semibold text-gray-800 capitalize">
                     {variant.style}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {variant.content.length} chars
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {variant.score && (
+                      <span className="text-[11px] px-2 py-1 rounded-full bg-green-100 text-green-700 font-semibold">
+                        {variant.score.totalScore.toFixed(1)}/10
+                      </span>
+                    )}
+                    <div className="text-xs text-gray-400">
+                      {variant.content.length} chars
+                    </div>
                   </div>
                 </div>
 
