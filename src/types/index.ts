@@ -141,6 +141,7 @@ export interface DraftPromotionPayload {
   content: string;
   sourceLabel?: string;
   sourceTopic?: string;
+  scoringResult?: ScoringResult;
   createdAt: number;
 }
 

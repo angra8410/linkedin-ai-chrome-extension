@@ -190,6 +190,7 @@ export default function ScoreTab({
       content: card.draft,
       sourceLabel: card.label,
       sourceTopic: seedPayload?.sourceTopic ?? "",
+      scoringResult: card.result,
       createdAt: Date.now(),
     });
   };

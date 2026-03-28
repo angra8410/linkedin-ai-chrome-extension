@@ -15,6 +15,7 @@ import type {
   PostDraft,
   ScoreComparisonPayload,
   DraftPromotionPayload,
+  ScoringResult,
 } from "../../types";
 
 type Mode = "post" | "recruiter" | "hooks" | "cta";
@@ -71,6 +72,7 @@ export default function DraftTab({
   const [rewriteOutput, setRewriteOutput] = useState("");
   const [rewriteLoading, setRewriteLoading] = useState(false);
   const [lastSeedAt, setLastSeedAt] = useState<number | null>(null);
+  const [attachedScore, setAttachedScore] = useState<ScoringResult | undefined>(undefined);
 
   const model = settings?.defaultModel ?? "llama3.1:latest";
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
@@ -87,9 +89,12 @@ export default function DraftTab({
     setRewriteOutput("");
     setSaved(false);
     setMode("post");
+    setAttachedScore(seedPayload.scoringResult);
+
     if (seedPayload.sourceTopic) {
       setTopic(seedPayload.sourceTopic);
     }
+
     setLastSeedAt(seedPayload.createdAt);
   }, [seedPayload, lastSeedAt]);
 
@@ -175,6 +180,7 @@ export default function DraftTab({
     setVariants([]);
     setSaved(false);
     setRewriteOutput("");
+    setAttachedScore(undefined);
     setLoading(true);
 
     const { system, user } = buildPrompt();
@@ -288,11 +294,12 @@ export default function DraftTab({
       content: output,
       pillar: pillar || (profile?.contentPillars[0] ?? ""),
       model,
+      scoringResult: attachedScore,
       variants: [
         ...variants.map((v) => v.content),
         ...(rewriteOutput.trim() ? [rewriteOutput] : []),
       ],
-      status: "draft",
+      status: attachedScore && attachedScore.totalScore >= 8 ? "ready" : "draft",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -305,6 +312,7 @@ export default function DraftTab({
     setOutput(text);
     setSaved(false);
     setRewriteOutput("");
+    setAttachedScore(undefined);
   };
 
   const handleSendAllToScore = () => {
@@ -337,6 +345,7 @@ export default function DraftTab({
               setOutput("");
               setVariants([]);
               setRewriteOutput("");
+              setAttachedScore(undefined);
             }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
               mode === m
@@ -374,10 +383,10 @@ export default function DraftTab({
               mode === "post"
                 ? "e.g. Why data quality matters more than data volume"
                 : mode === "recruiter"
-                ? "e.g. Improved reporting accuracy by redesigning data validation logic"
-                : mode === "hooks"
-                ? "e.g. Common mistakes in BI dashboard design"
-                : "e.g. Why most dashboards fail to drive decisions"
+                  ? "e.g. Improved reporting accuracy by redesigning data validation logic"
+                  : mode === "hooks"
+                    ? "e.g. Common mistakes in BI dashboard design"
+                    : "e.g. Why most dashboards fail to drive decisions"
             }
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
@@ -429,6 +438,14 @@ export default function DraftTab({
             {output || <span className="text-gray-400 animate-pulse">Writing...</span>}
           </div>
 
+          {attachedScore && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">
+              Attached score: <span className="font-semibold">{attachedScore.totalScore.toFixed(1)}/10</span>
+              {" · "}
+              This draft will be saved with its scoring result.
+            </div>
+          )}
+
           {output && !loading && (
             <div className="flex gap-2 flex-wrap">
               <button
@@ -443,7 +460,7 @@ export default function DraftTab({
                 disabled={saved}
                 className="px-4 py-2 text-sm border border-linkedin-blue text-linkedin-blue rounded-xl hover:bg-linkedin-light transition disabled:opacity-50"
               >
-                {saved ? "✓ Saved" : "Save Draft"}
+                {saved ? "✓ Saved" : attachedScore ? "Save Draft + Score" : "Save Draft"}
               </button>
 
               {(mode === "post" || mode === "recruiter") && (
