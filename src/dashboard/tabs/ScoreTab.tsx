@@ -6,12 +6,14 @@ import type {
   AppSettings,
   ScoringResult,
   ScoreComparisonPayload,
+  DraftPromotionPayload,
 } from "../../types";
 
 interface Props {
   profile: UserBrandProfile | null;
   settings: AppSettings | null;
   seedPayload?: ScoreComparisonPayload | null;
+  onPromoteToDraft: (payload: DraftPromotionPayload) => void;
 }
 
 type VariantKey = "main" | "variant1" | "variant2" | "variant3";
@@ -44,7 +46,11 @@ const VARIANT_LABELS: Record<VariantKey, string> = {
   variant3: "Variant 3",
 };
 
-export default function ScoreTab({ settings, seedPayload }: Props) {
+export default function ScoreTab({
+  settings,
+  seedPayload,
+  onPromoteToDraft,
+}: Props) {
   const [drafts, setDrafts] = useState<Record<VariantKey, string>>({
     main: "",
     variant1: "",
@@ -179,6 +185,15 @@ export default function ScoreTab({ settings, seedPayload }: Props) {
     }.`;
   };
 
+  const promoteDraft = (card: VariantScoreCard) => {
+    onPromoteToDraft({
+      content: card.draft,
+      sourceLabel: card.label,
+      sourceTopic: seedPayload?.sourceTopic ?? "",
+      createdAt: Date.now(),
+    });
+  };
+
   return (
     <div className="max-w-5xl space-y-6">
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
@@ -267,6 +282,12 @@ export default function ScoreTab({ settings, seedPayload }: Props) {
             >
               Copy best draft
             </button>
+            <button
+              onClick={() => promoteDraft(bestOverall)}
+              className="text-xs text-linkedin-blue underline"
+            >
+              Use best draft in Draft tab
+            </button>
           </div>
         </div>
       )}
@@ -341,6 +362,12 @@ export default function ScoreTab({ settings, seedPayload }: Props) {
                   className="text-xs text-linkedin-blue underline"
                 >
                   Copy this draft
+                </button>
+                <button
+                  onClick={() => promoteDraft(card)}
+                  className="text-xs text-linkedin-blue underline"
+                >
+                  Use this draft in Draft tab
                 </button>
               </div>
             </div>

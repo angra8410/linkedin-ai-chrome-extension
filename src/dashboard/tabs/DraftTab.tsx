@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { generate, generateStream } from "../../lib/ollama";
 import {
   promptGeneratePost,
@@ -14,6 +14,7 @@ import type {
   AppSettings,
   PostDraft,
   ScoreComparisonPayload,
+  DraftPromotionPayload,
 } from "../../types";
 
 type Mode = "post" | "recruiter" | "hooks" | "cta";
@@ -44,6 +45,7 @@ interface Props {
   profile: UserBrandProfile | null;
   settings: AppSettings | null;
   onSendToScore: (payload: ScoreComparisonPayload) => void;
+  seedPayload?: DraftPromotionPayload | null;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -51,7 +53,12 @@ function getErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
-export default function DraftTab({ profile, settings, onSendToScore }: Props) {
+export default function DraftTab({
+  profile,
+  settings,
+  onSendToScore,
+  seedPayload,
+}: Props) {
   const [mode, setMode] = useState<Mode>("post");
   const [topic, setTopic] = useState("");
   const [pillar, setPillar] = useState("");
@@ -63,12 +70,28 @@ export default function DraftTab({ profile, settings, onSendToScore }: Props) {
   const [rewriteStyle, setRewriteStyle] = useState<RewriteStyle>("linkedin-polish");
   const [rewriteOutput, setRewriteOutput] = useState("");
   const [rewriteLoading, setRewriteLoading] = useState(false);
+  const [lastSeedAt, setLastSeedAt] = useState<number | null>(null);
 
   const model = settings?.defaultModel ?? "llama3.1:latest";
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
   const streamingEnabled = settings?.streamingEnabled ?? true;
 
   const canGenerate = !!profile && !!topic.trim() && !loading && !variantLoading;
+
+  useEffect(() => {
+    if (!seedPayload) return;
+    if (lastSeedAt === seedPayload.createdAt) return;
+
+    setOutput(seedPayload.content);
+    setVariants([]);
+    setRewriteOutput("");
+    setSaved(false);
+    setMode("post");
+    if (seedPayload.sourceTopic) {
+      setTopic(seedPayload.sourceTopic);
+    }
+    setLastSeedAt(seedPayload.createdAt);
+  }, [seedPayload, lastSeedAt]);
 
   const buildPrompt = () => {
     if (!profile) return { system: "", user: "" };
@@ -328,6 +351,13 @@ export default function DraftTab({ profile, settings, onSendToScore }: Props) {
           </button>
         ))}
       </div>
+
+      {seedPayload && lastSeedAt === seedPayload.createdAt && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+          Best-scoring draft received from Score tab
+          {seedPayload.sourceLabel ? ` · ${seedPayload.sourceLabel}` : ""}.
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
         <div>

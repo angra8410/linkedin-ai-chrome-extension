@@ -126,13 +126,20 @@ export interface WeeklyStrategySummary {
   createdAt: number;
 }
 
-// ─── Draft → Score Bridge ────────────────────────────────────────────────────
+// ─── Draft ↔ Score Bridge ────────────────────────────────────────────────────
 
 export interface ScoreComparisonPayload {
   main: string;
   variant1?: string;
   variant2?: string;
   variant3?: string;
+  sourceTopic?: string;
+  createdAt: number;
+}
+
+export interface DraftPromotionPayload {
+  content: string;
+  sourceLabel?: string;
   sourceTopic?: string;
   createdAt: number;
 }

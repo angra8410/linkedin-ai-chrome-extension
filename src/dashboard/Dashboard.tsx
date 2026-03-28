@@ -6,6 +6,7 @@ import type {
   UserBrandProfile,
   AppSettings,
   ScoreComparisonPayload,
+  DraftPromotionPayload,
 } from "../types";
 import ProfileTab from "./tabs/ProfileTab";
 import DraftTab from "./tabs/DraftTab";
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus>("checking");
   const [scoreSeed, setScoreSeed] = useState<ScoreComparisonPayload | null>(null);
+  const [draftSeed, setDraftSeed] = useState<DraftPromotionPayload | null>(null);
 
   const reload = async () => {
     const s = await getSettings();
@@ -51,6 +53,11 @@ export default function Dashboard() {
   const handleSendToScore = (payload: ScoreComparisonPayload) => {
     setScoreSeed(payload);
     setTab("score");
+  };
+
+  const handlePromoteToDraft = (payload: DraftPromotionPayload) => {
+    setDraftSeed(payload);
+    setTab("draft");
   };
 
   return (
@@ -115,6 +122,7 @@ export default function Dashboard() {
               profile={profile}
               settings={settings}
               onSendToScore={handleSendToScore}
+              seedPayload={draftSeed}
             />
           )}
 
@@ -123,6 +131,7 @@ export default function Dashboard() {
               profile={profile}
               settings={settings}
               seedPayload={scoreSeed}
+              onPromoteToDraft={handlePromoteToDraft}
             />
           )}
 
