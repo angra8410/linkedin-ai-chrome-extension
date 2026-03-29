@@ -6,6 +6,7 @@ import {
   promptRewritePost,
   promptGenerateHooks,
   promptGenerateCTAs,
+  promptGenerateHashtags,
   promptScoreDraft,
   type RewriteStyle,
 } from "../../lib/prompts";
@@ -98,6 +99,57 @@ function parseScoreResponse(raw: string, model: string): ScoringResult {
   };
 }
 
+function normalizeHashtag(tag: string): string | null {
+  const cleaned = tag
+    .trim()
+    .replace(/^[-*•\d.\s]+/, "")
+    .replace(/^#+/, "")
+    .replace(/[^A-Za-z0-9]/g, "");
+
+  if (!cleaned) {
+    return null;
+  }
+
+  return `#${cleaned}`;
+}
+
+function parseHashtagResponse(raw: string): string[] {
+  const cleaned = raw.replace(/```json|```/gi, "").trim();
+
+  let candidates: string[] = [];
+
+  try {
+    const parsed = JSON.parse(cleaned);
+
+    if (Array.isArray(parsed)) {
+      candidates = parsed.filter((item): item is string => typeof item === "string");
+    }
+  } catch {
+    candidates = cleaned
+      .split(/[\n,]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+
+  const normalized = candidates
+    .map(normalizeHashtag)
+    .filter((tag): tag is string => !!tag);
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  for (const tag of normalized) {
+    const key = tag.toLowerCase();
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(tag);
+    }
+  }
+
+  return unique.slice(0, 5);
+}
+
 function getPipelineStep(stage: PipelineStage): number {
   switch (stage) {
     case "receiving":
@@ -155,8 +207,10 @@ export default function DraftTab({
   const [pillar, setPillar] = useState("");
   const [output, setOutput] = useState("");
   const [variants, setVariants] = useState<DraftVariant[]>([]);
+  const [hashtags, setHashtags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [variantLoading, setVariantLoading] = useState(false);
+  const [hashtagLoading, setHashtagLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [rewriteStyle, setRewriteStyle] = useState<RewriteStyle>("linkedin-polish");
   const [rewriteOutput, setRewriteOutput] = useState("");
@@ -175,6 +229,13 @@ export default function DraftTab({
   const streamingEnabled = settings?.streamingEnabled ?? true;
 
   const canGenerate = !!profile && !!topic.trim() && !loading && !variantLoading;
+  const canSuggestHashtags =
+    !!profile &&
+    !!output.trim() &&
+    !loading &&
+    !variantLoading &&
+    !hashtagLoading &&
+    (mode === "post" || mode === "recruiter");
 
   useEffect(() => {
     if (!seedPayload) return;
@@ -182,6 +243,7 @@ export default function DraftTab({
 
     setOutput(seedPayload.content);
     setVariants([]);
+    setHashtags([]);
     setRewriteOutput("");
     setSaved(false);
     setMode("post");
@@ -222,7 +284,7 @@ export default function DraftTab({
 
     autoRunRef.current = null;
     void generateBestDraftPipeline();
-  }, [profile, seedPayload, topic]);
+  }, [profile, seedPayload, topic, loading, variantLoading]);
 
   const buildPrompt = () => {
     if (!profile) return { system: "", user: "" };
@@ -281,6 +343,37 @@ export default function DraftTab({
     return parseScoreResponse(raw, model);
   };
 
+  const generateHashtagSuggestions = async () => {
+    if (!profile || !output.trim()) return;
+
+    setHashtagLoading(true);
+
+    try {
+      const { system, user } = promptGenerateHashtags(
+        profile,
+        output,
+        topic,
+        pillar || profile.contentPillars[0] || ""
+      );
+
+      const raw = await generate(user, system, model, ollamaUrl);
+      const parsed = parseHashtagResponse(raw);
+
+      setHashtags(parsed);
+
+      if (parsed.length > 0) {
+        setWorkflowMessage(`Generated ${parsed.length} hashtag suggestion${parsed.length > 1 ? "s" : ""}.`);
+      } else {
+        setWorkflowMessage("No hashtag suggestions were returned. Try again.");
+      }
+    } catch (error) {
+      console.error("Hashtag generation failed:", error);
+      setWorkflowMessage(`Hashtag generation failed. Details: ${getErrorMessage(error)}`);
+    } finally {
+      setHashtagLoading(false);
+    }
+  };
+
   const generateVariants = async (baseDraft: string): Promise<DraftVariant[]> => {
     if (!profile || (mode !== "post" && mode !== "recruiter")) {
       setVariants([]);
@@ -318,6 +411,7 @@ export default function DraftTab({
 
     setOutput("");
     setVariants([]);
+    setHashtags([]);
     setSaved(false);
     setRewriteOutput("");
     setAttachedScore(undefined);
@@ -361,6 +455,7 @@ export default function DraftTab({
 
     setOutput("");
     setVariants([]);
+    setHashtags([]);
     setSaved(false);
     setRewriteOutput("");
     setAttachedScore(undefined);
@@ -446,6 +541,7 @@ export default function DraftTab({
         model,
         scoringResult: winner.score,
         variants: scoredVariants.map((v) => v.content),
+        hashtags: [],
         status: winner.score.totalScore >= 8 ? "ready" : "draft",
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -507,6 +603,7 @@ export default function DraftTab({
         ...variants.map((v) => v.content),
         ...(rewriteOutput.trim() ? [rewriteOutput] : []),
       ],
+      hashtags,
       status: attachedScore && attachedScore.totalScore >= 8 ? "ready" : "draft",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -515,8 +612,30 @@ export default function DraftTab({
     await saveDraft(draft);
     setSaved(true);
     setWorkflowMessage(
-      attachedScore ? "Draft and score saved successfully." : "Draft saved successfully."
+      attachedScore ? "Draft, score, and hashtags saved successfully." : "Draft saved successfully."
     );
+  };
+
+  const handleCopyHashtags = async () => {
+    if (!hashtags.length) return;
+
+    await navigator.clipboard.writeText(hashtags.join(" "));
+    setWorkflowMessage("Hashtags copied to clipboard.");
+  };
+
+  const handleAppendHashtags = () => {
+    if (!hashtags.length) return;
+
+    const hashtagLine = hashtags.join(" ");
+
+    if (output.includes(hashtagLine)) {
+      setWorkflowMessage("These hashtags are already appended to the post.");
+      return;
+    }
+
+    setOutput((current) => `${current.trim()}\n\n${hashtagLine}`);
+    setSaved(false);
+    setWorkflowMessage("Hashtags appended to the main draft.");
   };
 
   const useAsMainDraft = (text: string) => {
@@ -524,7 +643,8 @@ export default function DraftTab({
     setSaved(false);
     setRewriteOutput("");
     setAttachedScore(undefined);
-    setWorkflowMessage("Variant promoted to main draft. Score detached until rescored.");
+    setHashtags([]);
+    setWorkflowMessage("Variant promoted to main draft. Score detached until rescored. Regenerate hashtags if needed.");
   };
 
   const handleSendAllToScore = () => {
@@ -559,6 +679,7 @@ export default function DraftTab({
               setMode(m);
               setOutput("");
               setVariants([]);
+              setHashtags([]);
               setRewriteOutput("");
               setAttachedScore(undefined);
               setWorkflowMessage("");
@@ -625,7 +746,6 @@ export default function DraftTab({
                 current === stepNumber &&
                 pipelineStage !== "done" &&
                 pipelineStage !== "error";
-              const pending = !done && !active;
 
               return (
                 <div
@@ -747,6 +867,58 @@ export default function DraftTab({
           <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap min-h-[120px]">
             {output || <span className="text-gray-400 animate-pulse">Writing...</span>}
           </div>
+
+          {(mode === "post" || mode === "recruiter") && output && !loading && (
+            <div className="space-y-3">
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => void generateHashtagSuggestions()}
+                  disabled={!canSuggestHashtags}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
+                >
+                  {hashtagLoading
+                    ? "Generating hashtags..."
+                    : hashtags.length > 0
+                      ? "Regenerate hashtags"
+                      : "Suggest hashtags"}
+                </button>
+
+                <button
+                  onClick={() => void handleCopyHashtags()}
+                  disabled={hashtags.length === 0}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
+                >
+                  Copy hashtags
+                </button>
+
+                <button
+                  onClick={handleAppendHashtags}
+                  disabled={hashtags.length === 0}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
+                >
+                  Append hashtags
+                </button>
+              </div>
+
+              {hashtags.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <div className="text-xs font-medium text-gray-600">
+                    Suggested hashtags
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {hashtags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-xs px-3 py-1.5 rounded-full bg-linkedin-light text-linkedin-blue border border-blue-100"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {attachedScore && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">

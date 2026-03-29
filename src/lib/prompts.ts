@@ -200,6 +200,48 @@ Return ONLY the 3 CTAs, numbered 1 to 3.`,
   };
 }
 
+// ─── 4B. Hashtag Generation ──────────────────────────────────────────────────
+
+export function promptGenerateHashtags(
+  profile: UserBrandProfile,
+  draft: string,
+  topic: string,
+  pillar: string
+): { system: string; user: string } {
+  return {
+    system: buildSystemMessage(profile),
+    user: `Generate 3 to 5 highly relevant LinkedIn hashtags for the post below.
+
+Context:
+- Topic: ${topic}
+- Content pillar: ${pillar || "general professional insight"}
+- Target audience: ${profile.audience}
+- Target role: ${profile.targetTitle}
+- Skills: ${topSkills(profile, 5)}
+- Industry: ${primaryIndustry(profile)}
+
+Post:
+${draft}
+
+Hashtag strategy:
+- Suggest a balanced mix of:
+  1. broad professional discoverability
+  2. niche skill/tool relevance
+  3. audience or role intent
+- Prioritize relevance over popularity.
+- Avoid spammy, generic, or overly broad tags unless they are truly useful.
+- Avoid duplicate roots like #Data and #DataAnalytics together unless both are clearly justified.
+- Do NOT include more than 5 hashtags.
+- Do NOT include explanations.
+- Do NOT include bullets or numbering.
+- Every item must start with #.
+- Use hashtag-friendly formatting with no spaces inside a hashtag.
+
+Return ONLY valid JSON in this exact format:
+["#ExampleOne", "#ExampleTwo", "#ExampleThree"]`,
+  };
+}
+
 // ─── 5. Post Rewriting ────────────────────────────────────────────────────────
 
 export type RewriteStyle =

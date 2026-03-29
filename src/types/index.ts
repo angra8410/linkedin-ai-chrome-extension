@@ -63,6 +63,7 @@ export interface PostDraft {
   model: string;
   scoringResult?: ScoringResult;
   variants: string[];
+  hashtags?: string[];
   status: PostDraftStatus;
   createdAt: number;
   updatedAt: number;
