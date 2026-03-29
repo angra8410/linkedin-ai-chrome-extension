@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { generate } from "../../lib/ollama";
 import { promptPerformanceReflection } from "../../lib/prompts";
 import {
@@ -91,6 +91,12 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
   const [saving, setSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+  const [draftHistoryOpen, setDraftHistoryOpen] = useState(false);
+
+  const formSectionRef = useRef<HTMLDivElement | null>(null);
+  const insightsSectionRef = useRef<HTMLDivElement | null>(null);
+  const recentPostsSectionRef = useRef<HTMLDivElement | null>(null);
+  const draftHistorySectionRef = useRef<HTMLDivElement | null>(null);
 
   const model = settings?.defaultModel ?? "llama3.1:latest";
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
@@ -109,6 +115,13 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
     })();
   }, [refreshKey]);
 
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   useEffect(() => {
     const applySeed = () => {
       const nextSeed = getAnalyticsSeed();
@@ -119,6 +132,10 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
       setSeed(nextSeed);
       setForm(buildFormFromSeed(nextSeed));
+
+      requestAnimationFrame(() => {
+        scrollToSection(formSectionRef);
+      });
     };
 
     applySeed();
@@ -173,6 +190,10 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
     setForm(createEmptyForm());
     setRefreshKey((p) => p + 1);
     setSaving(false);
+
+    requestAnimationFrame(() => {
+      scrollToSection(recentPostsSectionRef);
+    });
   };
 
   const handleClearPrefill = () => {
@@ -296,191 +317,45 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
   return (
     <div className="max-w-5xl space-y-6">
-      {/* Draft history */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-gray-800">Draft History</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Review your recent saved drafts and the strongest scored ones.
-            </p>
-          </div>
-          <span className="text-xs text-gray-400">
-            {recentDrafts.length} recent · {scoredDrafts.length} scored
-          </span>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-0">
-          <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100 space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-gray-700">Top scored drafts</h4>
-              <span className="text-xs text-gray-400">Best first</span>
-            </div>
-
-            {scoredDrafts.length === 0 ? (
-              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
-                No scored drafts yet. Score a draft in the Score tab, promote it back to Draft, and save it.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {scoredDrafts.map((draft) => {
-                  const isDeleting = deletingDraftId === draft.id;
-
-                  return (
-                    <div
-                      key={draft.id}
-                      className="border border-gray-200 rounded-xl p-4 bg-green-50/30 space-y-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-xs text-gray-400">
-                          {draft.status === "posted" && draft.postedAt
-                            ? `Posted · ${formatDateTime(draft.postedAt)}`
-                            : `Created · ${formatDate(draft.createdAt)}`}
-                        </div>
-                        <div className="flex gap-2 flex-wrap justify-end">
-                          <span
-                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
-                              draft.scoringResult?.totalScore
-                            )}`}
-                          >
-                            Score {draft.scoringResult?.totalScore?.toFixed(1) ?? "—"}
-                          </span>
-                          <span
-                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
-                              draft.status
-                            )}`}
-                          >
-                            {draft.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {truncate(draft.content, 260)}
-                      </div>
-
-                      <div className="flex gap-3 flex-wrap">
-                        <button
-                          onClick={() => navigator.clipboard.writeText(draft.content)}
-                          className="text-xs text-linkedin-blue underline"
-                        >
-                          Copy draft
-                        </button>
-                        <button
-                          onClick={() => reuseDraft(draft)}
-                          className="text-xs text-linkedin-blue underline"
-                        >
-                          Reuse in Draft
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDraft(draft)}
-                          disabled={isDeleting}
-                          className="text-xs text-red-600 underline disabled:opacity-50"
-                        >
-                          {isDeleting ? "Deleting..." : "Delete draft"}
-                        </button>
-                        <span className="text-xs text-gray-400">
-                          Model: {draft.model}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          Pillar: {draft.pillar || "—"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-gray-700">Recent saved drafts</h4>
-              <span className="text-xs text-gray-400">Most recent first</span>
-            </div>
-
-            {recentDrafts.length === 0 ? (
-              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
-                No saved drafts yet. Save one from the Draft tab to start building your local content history.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentDrafts.map((draft) => {
-                  const isDeleting = deletingDraftId === draft.id;
-
-                  return (
-                    <div
-                      key={draft.id}
-                      className="border border-gray-200 rounded-xl p-4 bg-gray-50/60 space-y-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-xs text-gray-400">
-                          {draft.status === "posted" && draft.postedAt
-                            ? `Posted · ${formatDateTime(draft.postedAt)}`
-                            : `Created · ${formatDate(draft.createdAt)}`}
-                        </div>
-                        <div className="flex gap-2 flex-wrap justify-end">
-                          {draft.scoringResult && (
-                            <span
-                              className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
-                                draft.scoringResult.totalScore
-                              )}`}
-                            >
-                              {draft.scoringResult.totalScore.toFixed(1)}/10
-                            </span>
-                          )}
-                          <span
-                            className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
-                              draft.status
-                            )}`}
-                          >
-                            {draft.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {truncate(draft.content, 220)}
-                      </div>
-
-                      <div className="flex gap-3 flex-wrap">
-                        <button
-                          onClick={() => navigator.clipboard.writeText(draft.content)}
-                          className="text-xs text-linkedin-blue underline"
-                        >
-                          Copy draft
-                        </button>
-                        <button
-                          onClick={() => reuseDraft(draft)}
-                          className="text-xs text-linkedin-blue underline"
-                        >
-                          Reuse in Draft
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDraft(draft)}
-                          disabled={isDeleting}
-                          className="text-xs text-red-600 underline disabled:opacity-50"
-                        >
-                          {isDeleting ? "Deleting..." : "Delete draft"}
-                        </button>
-                        <span className="text-xs text-gray-400">
-                          Variants: {draft.variants.length}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          Pillar: {draft.pillar || "—"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border border-gray-200 rounded-2xl p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => scrollToSection(formSectionRef)}
+            className="text-xs px-3 py-2 rounded-full border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light transition"
+          >
+            Performance Form
+          </button>
+          <button
+            onClick={() => scrollToSection(insightsSectionRef)}
+            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+          >
+            Insights
+          </button>
+          <button
+            onClick={() => scrollToSection(recentPostsSectionRef)}
+            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+          >
+            Recent Posts
+          </button>
+          <button
+            onClick={() => {
+              setDraftHistoryOpen(true);
+              requestAnimationFrame(() => {
+                scrollToSection(draftHistorySectionRef);
+              });
+            }}
+            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+          >
+            Draft History
+          </button>
         </div>
       </div>
 
       {/* Log a post */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+      <div
+        ref={formSectionRef}
+        className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4"
+      >
         <h3 className="font-semibold text-gray-800">Log Post Performance</h3>
         <p className="text-xs text-gray-400">
           Manually enter metrics from LinkedIn. Your data stays on your device.
@@ -626,33 +501,54 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
       </div>
 
       {/* Insight engine */}
-      {logs.length >= 3 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">AI Insights</h3>
-            <span className="text-xs text-gray-400">{logs.length} posts logged</span>
-          </div>
-          <button
-            onClick={handleInsight}
-            disabled={insightLoading}
-            className="px-4 py-2.5 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40"
-          >
-            {insightLoading ? "Analyzing..." : "✦ Analyze Performance"}
-          </button>
-          {insight && (
-            <div className="bg-linkedin-light rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
-              {insight}
-            </div>
-          )}
+      <div
+        ref={insightsSectionRef}
+        className="bg-white rounded-2xl border border-gray-200 p-6 space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800">AI Insights</h3>
+          <span className="text-xs text-gray-400">{logs.length} posts logged</span>
         </div>
-      )}
+
+        {logs.length < 3 ? (
+          <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+            Log at least 3 posts to generate insights.
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={handleInsight}
+              disabled={insightLoading}
+              className="px-4 py-2.5 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40"
+            >
+              {insightLoading ? "Analyzing..." : "✦ Analyze Performance"}
+            </button>
+            {insight && (
+              <div className="bg-linkedin-light rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                {insight}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Log table */}
-      {logs.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-800 text-sm">Recent Posts</h3>
+      <div
+        ref={recentPostsSectionRef}
+        className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
+      >
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800 text-sm">Recent Posts</h3>
+          <span className="text-xs text-gray-400">{logs.length} logged</span>
+        </div>
+
+        {logs.length === 0 ? (
+          <div className="p-6">
+            <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+              No performance entries yet. Save one from the form above to start tracking results.
+            </div>
           </div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-gray-50 text-gray-500 text-left">
@@ -687,8 +583,211 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+
+      {/* Draft history */}
+      <div
+        ref={draftHistorySectionRef}
+        className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
+      >
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-800">Draft History</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Review your recent saved drafts and the strongest scored ones.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">
+              {recentDrafts.length} recent · {scoredDrafts.length} scored
+            </span>
+            <button
+              onClick={() => setDraftHistoryOpen((current) => !current)}
+              className="text-xs text-linkedin-blue underline"
+            >
+              {draftHistoryOpen ? "Collapse" : "Expand"}
+            </button>
+          </div>
         </div>
-      )}
+
+        {!draftHistoryOpen ? (
+          <div className="p-6">
+            <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+              Draft History is collapsed to keep analytics front and center. Expand it when you want to review older drafts.
+            </div>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-2 gap-0">
+            <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-700">Top scored drafts</h4>
+                <span className="text-xs text-gray-400">Best first</span>
+              </div>
+
+              {scoredDrafts.length === 0 ? (
+                <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+                  No scored drafts yet. Score a draft in the Score tab, promote it back to Draft, and save it.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {scoredDrafts.map((draft) => {
+                    const isDeleting = deletingDraftId === draft.id;
+
+                    return (
+                      <div
+                        key={draft.id}
+                        className="border border-gray-200 rounded-xl p-4 bg-green-50/30 space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-xs text-gray-400">
+                            {draft.status === "posted" && draft.postedAt
+                              ? `Posted · ${formatDateTime(draft.postedAt)}`
+                              : `Created · ${formatDate(draft.createdAt)}`}
+                          </div>
+                          <div className="flex gap-2 flex-wrap justify-end">
+                            <span
+                              className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
+                                draft.scoringResult?.totalScore
+                              )}`}
+                            >
+                              Score {draft.scoringResult?.totalScore?.toFixed(1) ?? "—"}
+                            </span>
+                            <span
+                              className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
+                                draft.status
+                              )}`}
+                            >
+                              {draft.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                          {truncate(draft.content, 260)}
+                        </div>
+
+                        <div className="flex gap-3 flex-wrap">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(draft.content)}
+                            className="text-xs text-linkedin-blue underline"
+                          >
+                            Copy draft
+                          </button>
+                          <button
+                            onClick={() => reuseDraft(draft)}
+                            className="text-xs text-linkedin-blue underline"
+                          >
+                            Reuse in Draft
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDraft(draft)}
+                            disabled={isDeleting}
+                            className="text-xs text-red-600 underline disabled:opacity-50"
+                          >
+                            {isDeleting ? "Deleting..." : "Delete draft"}
+                          </button>
+                          <span className="text-xs text-gray-400">
+                            Model: {draft.model}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            Pillar: {draft.pillar || "—"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-700">Recent saved drafts</h4>
+                <span className="text-xs text-gray-400">Most recent first</span>
+              </div>
+
+              {recentDrafts.length === 0 ? (
+                <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+                  No saved drafts yet. Save one from the Draft tab to start building your local content history.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentDrafts.map((draft) => {
+                    const isDeleting = deletingDraftId === draft.id;
+
+                    return (
+                      <div
+                        key={draft.id}
+                        className="border border-gray-200 rounded-xl p-4 bg-gray-50/60 space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-xs text-gray-400">
+                            {draft.status === "posted" && draft.postedAt
+                              ? `Posted · ${formatDateTime(draft.postedAt)}`
+                              : `Created · ${formatDate(draft.createdAt)}`}
+                          </div>
+                          <div className="flex gap-2 flex-wrap justify-end">
+                            {draft.scoringResult && (
+                              <span
+                                className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftScoreColor(
+                                  draft.scoringResult.totalScore
+                                )}`}
+                              >
+                                {draft.scoringResult.totalScore.toFixed(1)}/10
+                              </span>
+                            )}
+                            <span
+                              className={`text-[11px] px-2 py-1 rounded-full font-semibold ${draftStatusColor(
+                                draft.status
+                              )}`}
+                            >
+                              {draft.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                          {truncate(draft.content, 220)}
+                        </div>
+
+                        <div className="flex gap-3 flex-wrap">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(draft.content)}
+                            className="text-xs text-linkedin-blue underline"
+                          >
+                            Copy draft
+                          </button>
+                          <button
+                            onClick={() => reuseDraft(draft)}
+                            className="text-xs text-linkedin-blue underline"
+                          >
+                            Reuse in Draft
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDraft(draft)}
+                            disabled={isDeleting}
+                            className="text-xs text-red-600 underline disabled:opacity-50"
+                          >
+                            {isDeleting ? "Deleting..." : "Delete draft"}
+                          </button>
+                          <span className="text-xs text-gray-400">
+                            Variants: {draft.variants.length}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            Pillar: {draft.pillar || "—"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
