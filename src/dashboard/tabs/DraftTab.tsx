@@ -625,7 +625,7 @@ export default function DraftTab({
                 current === stepNumber &&
                 pipelineStage !== "done" &&
                 pipelineStage !== "error";
-              
+              const pending = !done && !active;
 
               return (
                 <div

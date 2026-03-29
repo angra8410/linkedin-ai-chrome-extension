@@ -21,6 +21,7 @@ interface Props {
 
 type StatusFilter = "all" | "draft" | "ready" | "posted";
 type ScoreFilter = "all" | "scored" | "unscored";
+type SortOption = "newest" | "highest_score" | "ready_first" | "pillar_az";
 
 export default function DraftLibraryTab({ onOpenInDraft }: Props) {
   const [drafts, setDrafts] = useState<PostDraft[]>([]);
@@ -29,6 +30,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("all");
   const [pillarFilter, setPillarFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
 
@@ -78,13 +80,69 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
     });
   }, [drafts, query, statusFilter, scoreFilter, pillarFilter]);
 
+  const sortedDrafts = useMemo(() => {
+    const sorted = [...filteredDrafts];
+
+    if (sortBy === "newest") {
+      sorted.sort((a, b) => b.createdAt - a.createdAt);
+      return sorted;
+    }
+
+    if (sortBy === "highest_score") {
+      sorted.sort((a, b) => {
+        const aScore = a.scoringResult?.totalScore ?? -1;
+        const bScore = b.scoringResult?.totalScore ?? -1;
+
+        if (bScore !== aScore) {
+          return bScore - aScore;
+        }
+
+        return b.createdAt - a.createdAt;
+      });
+
+      return sorted;
+    }
+
+    if (sortBy === "ready_first") {
+      const statusRank: Record<PostDraft["status"], number> = {
+        ready: 0,
+        draft: 1,
+        posted: 2,
+      };
+
+      sorted.sort((a, b) => {
+        const rankDiff = statusRank[a.status] - statusRank[b.status];
+
+        if (rankDiff !== 0) {
+          return rankDiff;
+        }
+
+        return b.createdAt - a.createdAt;
+      });
+
+      return sorted;
+    }
+
+    sorted.sort((a, b) => {
+      const pillarCompare = a.pillar.localeCompare(b.pillar);
+
+      if (pillarCompare !== 0) {
+        return pillarCompare;
+      }
+
+      return b.createdAt - a.createdAt;
+    });
+
+    return sorted;
+  }, [filteredDrafts, sortBy]);
+
   const kanbanColumns = useMemo(
     () => ({
-      draft: filteredDrafts.filter((draft) => draft.status === "draft"),
-      ready: filteredDrafts.filter((draft) => draft.status === "ready"),
-      posted: filteredDrafts.filter((draft) => draft.status === "posted"),
+      draft: sortedDrafts.filter((draft) => draft.status === "draft"),
+      ready: sortedDrafts.filter((draft) => draft.status === "ready"),
+      posted: sortedDrafts.filter((draft) => draft.status === "posted"),
     }),
-    [filteredDrafts]
+    [sortedDrafts]
   );
 
   const handleOpenInDraft = (draft: PostDraft) => {
@@ -317,11 +375,11 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
         <div>
           <h3 className="font-semibold text-gray-800">Draft Library</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Search, filter, reopen, and manage all your saved drafts in one place.
+            Search, filter, sort, reopen, and manage all your saved drafts in one place.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-3">
+        <div className="grid md:grid-cols-5 gap-3">
           <div className="md:col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
               Search
@@ -368,6 +426,22 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              Sort
+            </label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+            >
+              <option value="newest">Newest</option>
+              <option value="highest_score">Highest score</option>
+              <option value="ready_first">Ready first</option>
+              <option value="pillar_az">Pillar A-Z</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
               Pillar
             </label>
             <select
@@ -384,9 +458,9 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
             </select>
           </div>
 
-          <div className="md:col-span-3 flex items-end">
+          <div className="md:col-span-4 flex items-end">
             <div className="text-xs text-gray-400">
-              Showing {filteredDrafts.length} of {drafts.length} saved drafts
+              Showing {sortedDrafts.length} of {drafts.length} saved drafts
             </div>
           </div>
 
@@ -397,6 +471,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
                 setStatusFilter("all");
                 setScoreFilter("all");
                 setPillarFilter("all");
+                setSortBy("newest");
               }}
               className="text-xs text-linkedin-blue underline"
             >
