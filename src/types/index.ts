@@ -11,6 +11,7 @@ export type RewriteStyle =
   | "more-human";
 
 export type PostDraftStatus = "draft" | "ready" | "posted";
+export type AppTheme = "light" | "dark";
 
 // ─── Core Data Models ────────────────────────────────────────────────────────
 
@@ -184,4 +185,5 @@ export interface AppSettings {
   streamingEnabled: boolean;
   onboardingComplete: boolean;
   activeProfileId: string | null;
+  theme: AppTheme;
 }

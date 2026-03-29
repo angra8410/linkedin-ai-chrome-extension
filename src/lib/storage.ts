@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   streamingEnabled: true,
   onboardingComplete: false,
   activeProfileId: null,
+  theme: "light",
 };
 
 // ─── Storage Keys ─────────────────────────────────────────────────────────────
@@ -96,6 +97,10 @@ function normalizeDraft(draft: PostDraft): PostDraft {
     variants: draft.variants ?? [],
     createdAt: draft.createdAt ?? Date.now(),
     updatedAt: draft.updatedAt ?? draft.createdAt ?? Date.now(),
+    postedAt:
+      draft.status === "posted"
+        ? draft.postedAt ?? draft.updatedAt ?? draft.createdAt ?? Date.now()
+        : undefined,
   };
 }
 
@@ -116,6 +121,10 @@ export async function saveDraft(draft: PostDraft): Promise<void> {
   const normalizedDraft = normalizeDraft({
     ...draft,
     updatedAt: Date.now(),
+    postedAt:
+      draft.status === "posted"
+        ? draft.postedAt ?? Date.now()
+        : undefined,
   });
 
   if (idx >= 0) {
@@ -157,6 +166,10 @@ export async function updateDraftStatus(
       ...draft,
       status,
       updatedAt: Date.now(),
+      postedAt:
+        status === "posted"
+          ? draft.postedAt ?? Date.now()
+          : undefined,
     });
   });
 
@@ -174,8 +187,8 @@ export async function moveDraftLeft(id: string): Promise<void> {
     draft.status === "posted"
       ? "ready"
       : draft.status === "ready"
-      ? "draft"
-      : "draft";
+        ? "draft"
+        : "draft";
 
   await updateDraftStatus(id, nextStatus);
 }
@@ -191,8 +204,8 @@ export async function moveDraftRight(id: string): Promise<void> {
     draft.status === "draft"
       ? "ready"
       : draft.status === "ready"
-      ? "posted"
-      : "posted";
+        ? "posted"
+        : "posted";
 
   await updateDraftStatus(id, nextStatus);
 }
@@ -210,4 +223,8 @@ export async function markDraftAsDraft(id: string): Promise<void> {
 
 export async function markDraftReady(id: string): Promise<void> {
   await updateDraftStatus(id, "ready");
+}
+
+export async function markDraftPosted(id: string): Promise<void> {
+  await updateDraftStatus(id, "posted");
 }
