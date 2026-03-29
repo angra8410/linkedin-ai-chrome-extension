@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { generate } from "../../lib/ollama";
 import { promptPerformanceReflection } from "../../lib/prompts";
 import {
@@ -42,7 +43,41 @@ type AnalyticsFormState = {
   notes: string;
 };
 
+type ExportRow = {
+  "Post": string;
+  "Posted At": string;
+  "Last Updated": string;
+  "Pillar": string;
+  "Format": string;
+  "Impressions": number;
+  "Reactions": number;
+  "Comments": number;
+  "Reposts": number;
+  "Profile Views": number;
+  "Engagement Rate": string;
+  "Notes": string;
+  "Source Draft ID": string;
+  "Log ID": string;
+};
+
 const FORMATS = ["list", "story", "insight", "question", "data"] as const;
+
+const EXPORT_COLUMNS: Array<keyof ExportRow> = [
+  "Post",
+  "Posted At",
+  "Last Updated",
+  "Pillar",
+  "Format",
+  "Impressions",
+  "Reactions",
+  "Comments",
+  "Reposts",
+  "Profile Views",
+  "Engagement Rate",
+  "Notes",
+  "Source Draft ID",
+  "Log ID",
+];
 
 function toDatetimeLocalValue(timestamp: number): string {
   const date = new Date(timestamp);
@@ -96,6 +131,37 @@ function buildFormFromLog(log: PerformanceLog): AnalyticsFormState {
     profileViews: log.profileViews,
     notes: log.notes,
   };
+}
+
+function escapeCsvValue(value: string | number): string {
+  const stringValue = String(value ?? "");
+  const escaped = stringValue.replace(/"/g, "\"\"");
+  return `"${escaped}"`;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildTimestampForFilename(): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+
+  return [
+    now.getFullYear(),
+    pad(now.getMonth() + 1),
+    pad(now.getDate()),
+    "_",
+    pad(now.getHours()),
+    pad(now.getMinutes()),
+  ].join("");
 }
 
 export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Props) {
@@ -398,6 +464,67 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
     return truncate(seed.contentSnippet, 180);
   }, [seed]);
 
+  const exportRows = useMemo<ExportRow[]>(() => {
+    return logs.map((log) => ({
+      "Post": log.postTitle,
+      "Posted At": formatDateTime(log.postedAt),
+      "Last Updated": formatDateTime(log.updatedAt ?? log.createdAt),
+      "Pillar": log.pillar || "",
+      "Format": log.format,
+      "Impressions": log.impressions,
+      "Reactions": log.reactions,
+      "Comments": log.comments,
+      "Reposts": log.reposts,
+      "Profile Views": log.profileViews,
+      "Engagement Rate": engagementRate(log),
+      "Notes": log.notes || "",
+      "Source Draft ID": log.sourceDraftId ?? "",
+      "Log ID": log.id,
+    }));
+  }, [logs]);
+
+  const handleExportCsv = () => {
+    if (exportRows.length === 0) return;
+
+    const header = EXPORT_COLUMNS.map((column) => escapeCsvValue(column)).join(",");
+    const lines = exportRows.map((row) =>
+      EXPORT_COLUMNS.map((column) => escapeCsvValue(row[column])).join(",")
+    );
+
+    const csv = [header, ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+    downloadBlob(blob, `linkedin_analytics_${buildTimestampForFilename()}.csv`);
+  };
+
+  const handleExportTxt = () => {
+    if (exportRows.length === 0) return;
+
+    const text = exportRows
+      .map((row, index) => {
+        const lines = EXPORT_COLUMNS.map((column) => `${column}: ${row[column]}`);
+        return [`Entry ${index + 1}`, ...lines].join("\n");
+      })
+      .join("\n\n----------------------------------------\n\n");
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8;" });
+
+    downloadBlob(blob, `linkedin_analytics_${buildTimestampForFilename()}.txt`);
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) return;
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows, {
+      header: EXPORT_COLUMNS as string[],
+    });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Analytics");
+
+    XLSX.writeFile(workbook, `linkedin_analytics_${buildTimestampForFilename()}.xlsx`);
+  };
+
   return (
     <div className="max-w-5xl space-y-6">
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border border-gray-200 rounded-2xl p-4 shadow-sm">
@@ -650,9 +777,35 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
         ref={recentPostsSectionRef}
         className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
       >
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800 text-sm">Recent Posts</h3>
-          <span className="text-xs text-gray-400">{logs.length} logged</span>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-gray-800 text-sm">Recent Posts</h3>
+            <span className="text-xs text-gray-400">{logs.length} logged</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleExportCsv}
+              disabled={exportRows.length === 0}
+              className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition disabled:opacity-40"
+            >
+              Export CSV
+            </button>
+            <button
+              onClick={handleExportTxt}
+              disabled={exportRows.length === 0}
+              className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition disabled:opacity-40"
+            >
+              Export TXT
+            </button>
+            <button
+              onClick={handleExportExcel}
+              disabled={exportRows.length === 0}
+              className="text-xs px-3 py-2 rounded-full border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light transition disabled:opacity-40"
+            >
+              Export Excel
+            </button>
+          </div>
         </div>
 
         {logs.length === 0 ? (
