@@ -9,6 +9,8 @@ import {
   getRecentDrafts,
   getScoredDrafts,
   savePerformanceLog,
+  updatePerformanceLog,
+  getPerformanceLogBySourceDraftId,
   deleteDraft,
 } from "../../lib/db";
 import type {
@@ -80,6 +82,22 @@ function buildFormFromSeed(seed: PerformanceLogSeedPayload): AnalyticsFormState 
   };
 }
 
+function buildFormFromLog(log: PerformanceLog): AnalyticsFormState {
+  return {
+    sourceDraftId: log.sourceDraftId,
+    postTitle: log.postTitle,
+    pillar: log.pillar,
+    format: log.format,
+    postedAt: toDatetimeLocalValue(log.postedAt),
+    impressions: log.impressions,
+    reactions: log.reactions,
+    comments: log.comments,
+    reposts: log.reposts,
+    profileViews: log.profileViews,
+    notes: log.notes,
+  };
+}
+
 export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Props) {
   const [form, setForm] = useState<AnalyticsFormState>(createEmptyForm());
   const [seed, setSeed] = useState<PerformanceLogSeedPayload | null>(null);
@@ -92,6 +110,7 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
   const [refreshKey, setRefreshKey] = useState(0);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [draftHistoryOpen, setDraftHistoryOpen] = useState(false);
+  const [editingLog, setEditingLog] = useState<PerformanceLog | null>(null);
 
   const formSectionRef = useRef<HTMLDivElement | null>(null);
   const insightsSectionRef = useRef<HTMLDivElement | null>(null);
@@ -115,7 +134,7 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
     })();
   }, [refreshKey]);
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+  const scrollToSection = (ref: { current: HTMLDivElement | null }) => {
     ref.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -123,25 +142,40 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
   };
 
   useEffect(() => {
-    const applySeed = () => {
+    let cancelled = false;
+
+    const applySeed = async () => {
       const nextSeed = getAnalyticsSeed();
 
       if (!nextSeed) {
         return;
       }
 
+      const existingLog = await getPerformanceLogBySourceDraftId(nextSeed.sourceDraftId);
+
+      if (cancelled) {
+        return;
+      }
+
       setSeed(nextSeed);
-      setForm(buildFormFromSeed(nextSeed));
+
+      if (existingLog) {
+        setEditingLog(existingLog);
+        setForm(buildFormFromLog(existingLog));
+      } else {
+        setEditingLog(null);
+        setForm(buildFormFromSeed(nextSeed));
+      }
 
       requestAnimationFrame(() => {
         scrollToSection(formSectionRef);
       });
     };
 
-    applySeed();
+    void applySeed();
 
     const handleSeedUpdated = () => {
-      applySeed();
+      void applySeed();
     };
 
     window.addEventListener(
@@ -150,6 +184,7 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
     );
 
     return () => {
+      cancelled = true;
       window.removeEventListener(
         ANALYTICS_SEED_EVENT,
         handleSeedUpdated as EventListener
@@ -162,31 +197,58 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
     setSaving(true);
 
+    const now = Date.now();
     const postedTimestamp = form.postedAt
       ? new Date(form.postedAt).getTime()
-      : Date.now();
+      : now;
 
-    await savePerformanceLog({
-      id: crypto.randomUUID(),
-      sourceDraftId: form.sourceDraftId,
-      postTitle: form.postTitle.trim(),
-      postedAt: postedTimestamp,
-      pillar: form.pillar,
-      format: form.format,
-      impressions: form.impressions,
-      reactions: form.reactions,
-      comments: form.comments,
-      reposts: form.reposts,
-      profileViews: form.profileViews,
-      notes: form.notes.trim(),
-      createdAt: Date.now(),
-    });
+    let nextEditingLog: PerformanceLog | null = editingLog;
+
+    if (!nextEditingLog && form.sourceDraftId) {
+      nextEditingLog = await getPerformanceLogBySourceDraftId(form.sourceDraftId);
+    }
+
+    if (nextEditingLog) {
+      await updatePerformanceLog({
+        ...nextEditingLog,
+        sourceDraftId: form.sourceDraftId,
+        postTitle: form.postTitle.trim(),
+        postedAt: postedTimestamp,
+        pillar: form.pillar,
+        format: form.format,
+        impressions: form.impressions,
+        reactions: form.reactions,
+        comments: form.comments,
+        reposts: form.reposts,
+        profileViews: form.profileViews,
+        notes: form.notes.trim(),
+        updatedAt: now,
+      });
+    } else {
+      await savePerformanceLog({
+        id: crypto.randomUUID(),
+        sourceDraftId: form.sourceDraftId,
+        postTitle: form.postTitle.trim(),
+        postedAt: postedTimestamp,
+        pillar: form.pillar,
+        format: form.format,
+        impressions: form.impressions,
+        reactions: form.reactions,
+        comments: form.comments,
+        reposts: form.reposts,
+        profileViews: form.profileViews,
+        notes: form.notes.trim(),
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     if (seed?.sourceDraftId && seed.sourceDraftId === form.sourceDraftId) {
       clearAnalyticsSeed();
       setSeed(null);
     }
 
+    setEditingLog(null);
     setForm(createEmptyForm());
     setRefreshKey((p) => p + 1);
     setSaving(false);
@@ -199,7 +261,28 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
   const handleClearPrefill = () => {
     clearAnalyticsSeed();
     setSeed(null);
+    setEditingLog(null);
     setForm(createEmptyForm());
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLog(null);
+
+    if (seed) {
+      setForm(buildFormFromSeed(seed));
+      return;
+    }
+
+    setForm(createEmptyForm());
+  };
+
+  const handleEditMetrics = (log: PerformanceLog) => {
+    setEditingLog(log);
+    setForm(buildFormFromLog(log));
+
+    requestAnimationFrame(() => {
+      scrollToSection(formSectionRef);
+    });
   };
 
   const handleInsight = async () => {
@@ -361,7 +444,31 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
           Manually enter metrics from LinkedIn. Your data stays on your device.
         </p>
 
-        {seed && (
+        {editingLog && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-blue-800">
+                Editing existing metrics entry
+              </div>
+              <button
+                onClick={handleCancelEdit}
+                className="text-xs text-blue-700 underline"
+              >
+                Cancel edit
+              </button>
+            </div>
+
+            <div className="text-sm text-blue-800">
+              <span className="font-medium">{editingLog.postTitle}</span>
+              {" · "}
+              Posted {formatDateTime(editingLog.postedAt)}
+              {" · "}
+              Last updated {formatDateTime(editingLog.updatedAt ?? editingLog.createdAt)}
+            </div>
+          </div>
+        )}
+
+        {seed && !editingLog && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm font-semibold text-green-800">
@@ -496,7 +603,13 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
           disabled={!form.postTitle.trim() || saving}
           className="w-full bg-linkedin-blue text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-linkedin-dark transition"
         >
-          {saving ? "Saving..." : "Save Entry"}
+          {saving
+            ? editingLog
+              ? "Updating..."
+              : "Saving..."
+            : editingLog
+              ? "Update Entry"
+              : "Save Entry"}
         </button>
       </div>
 
@@ -555,20 +668,25 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                 <tr>
                   <th className="px-4 py-3 font-medium">Post</th>
                   <th className="px-4 py-3 font-medium">Posted</th>
+                  <th className="px-4 py-3 font-medium">Last updated</th>
                   <th className="px-4 py-3 font-medium">Pillar</th>
                   <th className="px-4 py-3 font-medium">Impressions</th>
                   <th className="px-4 py-3 font-medium">Reactions</th>
                   <th className="px-4 py-3 font-medium">Engagement</th>
+                  <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 font-medium text-gray-700 max-w-[200px] truncate">
+                    <td className="px-4 py-3 font-medium text-gray-700 max-w-[220px] truncate">
                       {log.postTitle}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {formatDateTime(log.postedAt)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {formatDateTime(log.updatedAt ?? log.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-gray-500">{log.pillar || "—"}</td>
                     <td className="px-4 py-3 text-gray-600">
@@ -577,6 +695,14 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                     <td className="px-4 py-3 text-gray-600">{log.reactions}</td>
                     <td className="px-4 py-3 text-linkedin-blue font-semibold">
                       {engagementRate(log)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleEditMetrics(log)}
+                        className="text-linkedin-blue underline"
+                      >
+                        Edit metrics
+                      </button>
                     </td>
                   </tr>
                 ))}

@@ -108,6 +108,7 @@ export interface PerformanceLog {
   profileViews: number;
   notes: string;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export interface PerformanceLogSeedPayload {

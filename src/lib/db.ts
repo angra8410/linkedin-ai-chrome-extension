@@ -63,6 +63,16 @@ function normalizeDraft(draft: PostDraft): PostDraft {
   };
 }
 
+function normalizePerformanceLog(log: PerformanceLog): PerformanceLog {
+  const createdAt = log.createdAt ?? Date.now();
+
+  return {
+    ...log,
+    createdAt,
+    updatedAt: log.updatedAt ?? createdAt,
+  };
+}
+
 function emitAnalyticsSeedUpdated(): void {
   if (typeof window === "undefined") {
     return;
@@ -250,15 +260,49 @@ export async function deleteDraft(id: string): Promise<void> {
 // ─── Performance Log Helpers ──────────────────────────────────────────────────
 
 export async function savePerformanceLog(log: PerformanceLog): Promise<void> {
-  await db.performanceLogs.put(log);
+  await db.performanceLogs.put(normalizePerformanceLog(log));
+}
+
+export async function updatePerformanceLog(log: PerformanceLog): Promise<void> {
+  await db.performanceLogs.put(
+    normalizePerformanceLog({
+      ...log,
+      updatedAt: Date.now(),
+    })
+  );
 }
 
 export async function getPerformanceLogs(): Promise<PerformanceLog[]> {
-  return db.performanceLogs.orderBy("postedAt").reverse().toArray();
+  const logs = await db.performanceLogs.toArray();
+
+  return logs
+    .map(normalizePerformanceLog)
+    .sort((a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt));
 }
 
 export async function getRecentLogs(limit = 20): Promise<PerformanceLog[]> {
-  return db.performanceLogs.orderBy("postedAt").reverse().limit(limit).toArray();
+  const logs = await getPerformanceLogs();
+  return logs.slice(0, limit);
+}
+
+export async function getPerformanceLogById(
+  id: string
+): Promise<PerformanceLog | null> {
+  const log = await db.performanceLogs.get(id);
+  return log ? normalizePerformanceLog(log) : null;
+}
+
+export async function getPerformanceLogBySourceDraftId(
+  sourceDraftId: string
+): Promise<PerformanceLog | null> {
+  const logs = await db.performanceLogs.toArray();
+
+  const matches = logs
+    .map(normalizePerformanceLog)
+    .filter((log) => log.sourceDraftId === sourceDraftId)
+    .sort((a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt));
+
+  return matches[0] ?? null;
 }
 
 // ─── Scoring Helpers ──────────────────────────────────────────────────────────
