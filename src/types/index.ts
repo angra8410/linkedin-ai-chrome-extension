@@ -65,6 +65,7 @@ export interface PostDraft {
   status: PostDraftStatus;
   createdAt: number;
   updatedAt: number;
+  postedAt?: number;
 }
 
 export interface RewriteVariant {
@@ -94,6 +95,7 @@ export interface ScoringResult {
 
 export interface PerformanceLog {
   id: string;
+  sourceDraftId?: string;
   postTitle: string;
   postedAt: number;
   pillar: string;
@@ -105,6 +107,15 @@ export interface PerformanceLog {
   profileViews: number;
   notes: string;
   createdAt: number;
+}
+
+export interface PerformanceLogSeedPayload {
+  sourceDraftId: string;
+  postTitle: string;
+  pillar: string;
+  postedAt: number;
+  format?: PerformanceLog["format"];
+  contentSnippet?: string;
 }
 
 export interface AIRecommendation {

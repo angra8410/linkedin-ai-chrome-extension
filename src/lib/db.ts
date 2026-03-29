@@ -5,11 +5,16 @@ import type {
   RewriteVariant,
   ScoringResult,
   PerformanceLog,
+  PerformanceLogSeedPayload,
   AIRecommendation,
   WeeklyStrategySummary,
   SavedPrompt,
   ContentPillar,
 } from "../types";
+
+export const ANALYTICS_SEED_EVENT = "linkedin-ai-analytics-seed-updated";
+
+const ANALYTICS_SEED_STORAGE_KEY = "linkedin-ai-analytics-seed";
 
 class LinkedInAIDatabase extends Dexie {
   drafts!: Table<PostDraft, string>;
@@ -41,24 +46,89 @@ export const db = new LinkedInAIDatabase();
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
 
 function normalizeDraft(draft: PostDraft): PostDraft {
+  const normalizedStatus = draft.status ?? "draft";
+  const normalizedCreatedAt = draft.createdAt ?? Date.now();
+  const normalizedUpdatedAt = draft.updatedAt ?? normalizedCreatedAt;
+
   return {
     ...draft,
-    status: draft.status ?? "draft",
+    status: normalizedStatus,
     variants: draft.variants ?? [],
-    createdAt: draft.createdAt ?? Date.now(),
-    updatedAt: draft.updatedAt ?? draft.createdAt ?? Date.now(),
+    createdAt: normalizedCreatedAt,
+    updatedAt: normalizedUpdatedAt,
+    postedAt:
+      normalizedStatus === "posted"
+        ? draft.postedAt ?? normalizedUpdatedAt
+        : undefined,
   };
+}
+
+function emitAnalyticsSeedUpdated(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(ANALYTICS_SEED_EVENT));
+}
+
+// ─── Analytics Seed Bridge Helpers ───────────────────────────────────────────
+
+export function setAnalyticsSeed(seed: PerformanceLogSeedPayload): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(ANALYTICS_SEED_STORAGE_KEY, JSON.stringify(seed));
+    emitAnalyticsSeedUpdated();
+  } catch (error) {
+    console.error("Failed to persist analytics seed:", error);
+  }
+}
+
+export function getAnalyticsSeed(): PerformanceLogSeedPayload | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(ANALYTICS_SEED_STORAGE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw) as PerformanceLogSeedPayload;
+  } catch (error) {
+    console.error("Failed to read analytics seed:", error);
+    return null;
+  }
+}
+
+export function clearAnalyticsSeed(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(ANALYTICS_SEED_STORAGE_KEY);
+    emitAnalyticsSeedUpdated();
+  } catch (error) {
+    console.error("Failed to clear analytics seed:", error);
+  }
 }
 
 // ─── Draft Helpers ────────────────────────────────────────────────────────────
 
 export async function saveDraft(draft: PostDraft): Promise<void> {
-  await db.drafts.put(
-    normalizeDraft({
-      ...draft,
-      updatedAt: Date.now(),
-    })
-  );
+  const normalizedDraft = normalizeDraft({
+    ...draft,
+    updatedAt: Date.now(),
+    postedAt:
+      draft.status === "posted" ? draft.postedAt ?? Date.now() : undefined,
+  });
+
+  await db.drafts.put(normalizedDraft);
 }
 
 export async function getDrafts(): Promise<PostDraft[]> {
@@ -111,11 +181,16 @@ export async function updateDraftStatus(
     return;
   }
 
+  const now = Date.now();
+  const nextPostedAt =
+    status === "posted" ? existing.postedAt ?? now : undefined;
+
   await db.drafts.put(
     normalizeDraft({
       ...existing,
       status,
-      updatedAt: Date.now(),
+      updatedAt: now,
+      postedAt: nextPostedAt,
     })
   );
 }
@@ -131,8 +206,8 @@ export async function moveDraftLeft(id: string): Promise<void> {
     draft.status === "posted"
       ? "ready"
       : draft.status === "ready"
-      ? "draft"
-      : "draft";
+        ? "draft"
+        : "draft";
 
   await updateDraftStatus(id, nextStatus);
 }
@@ -148,8 +223,8 @@ export async function moveDraftRight(id: string): Promise<void> {
     draft.status === "draft"
       ? "ready"
       : draft.status === "ready"
-      ? "posted"
-      : "posted";
+        ? "posted"
+        : "posted";
 
   await updateDraftStatus(id, nextStatus);
 }
