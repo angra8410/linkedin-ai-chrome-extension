@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
-import { checkOllamaStatus } from "../lib/ollama";
+import { checkOllamaStatus, type OllamaGenerationOptions } from "../lib/ollama";
+import { cleanupSourceAdaptation, cleanupTopicExpansion } from "../lib/sourceCleanup";
 import { getSettings, getActiveProfile } from "../lib/storage";
 import { generateStream } from "../lib/ollama";
 import { promptGeneratePost } from "../lib/prompts";
-import type { OllamaStatus, UserBrandProfile, AppSettings, AppTheme } from "../types";
+import type {
+  OllamaStatus,
+  UserBrandProfile,
+  AppSettings,
+  AppTheme,
+  GenerationInputMode,
+} from "../types";
 
 type View = "home" | "draft" | "score";
 
@@ -11,11 +18,26 @@ function applyTheme(theme: AppTheme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
 }
 
+const creativeGenerationOptions: OllamaGenerationOptions = {
+  temperature: 0.75,
+  top_p: 0.82,
+  top_k: 30,
+  repeat_penalty: 1.14,
+};
+
+const sourceFaithfulGenerationOptions: OllamaGenerationOptions = {
+  temperature: 0.1,
+  top_p: 0.4,
+  top_k: 10,
+  repeat_penalty: 1.01,
+};
+
 export default function Popup() {
   const [status, setStatus] = useState<OllamaStatus>("checking");
   const [profile, setProfile] = useState<UserBrandProfile | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [view, setView] = useState<View>("home");
+  const [inputMode, setInputMode] = useState<GenerationInputMode>("topic");
 
   // Draft state
   const [topic, setTopic] = useState("");
@@ -45,17 +67,39 @@ export default function Popup() {
     setOutput("");
     setLoading(true);
 
-    const { system, user } = promptGeneratePost(profile, topic, pillar || profile.contentPillars[0]);
+    const { system, user } = promptGeneratePost(
+      profile,
+      topic,
+      pillar || profile.contentPillars[0],
+      inputMode
+    );
 
     try {
+      const generationOptions = inputMode === "source"
+        ? sourceFaithfulGenerationOptions
+        : creativeGenerationOptions;
+      let finalText = "";
+
       await generateStream(
         user,
         system,
         settings.defaultModel,
-        (chunk) => setOutput((prev) => prev + chunk),
+        (chunk) => {
+          finalText += chunk;
+          setOutput((prev) => prev + chunk);
+        },
         () => setLoading(false),
-        settings.ollamaUrl
+        settings.ollamaUrl,
+        generationOptions
       );
+
+      if (finalText.trim()) {
+        setOutput(
+          inputMode === "source"
+            ? cleanupSourceAdaptation(topic, finalText)
+            : cleanupTopicExpansion(topic, finalText)
+        );
+      }
     } catch (err) {
       setOutput("⚠️ Could not connect to Ollama. Make sure it is running.");
       setLoading(false);
@@ -103,11 +147,37 @@ export default function Popup() {
               running locally.
             </p>
             <div>
+              <div className="mb-2 flex gap-2">
+                <button
+                  onClick={() => setInputMode("topic")}
+                  className={`rounded-full border px-3 py-1 text-[11px] transition ${
+                    inputMode === "topic"
+                      ? "border-linkedin-blue bg-linkedin-blue text-white"
+                      : "border-gray-200 text-gray-600 dark:border-slate-700 dark:text-slate-400"
+                  }`}
+                >
+                  Topic idea
+                </button>
+                <button
+                  onClick={() => setInputMode("source")}
+                  className={`rounded-full border px-3 py-1 text-[11px] transition ${
+                    inputMode === "source"
+                      ? "border-linkedin-blue bg-linkedin-blue text-white"
+                      : "border-gray-200 text-gray-600 dark:border-slate-700 dark:text-slate-400"
+                  }`}
+                >
+                  Adapt source
+                </button>
+              </div>
               <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300">Topic / Idea</label>
               <textarea
                 className="w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
                 rows={3}
-                placeholder="e.g. Why data quality matters more than data quantity"
+                placeholder={
+                  inputMode === "source"
+                    ? "Paste source material to adapt faithfully"
+                    : "e.g. Why data quality matters more than data quantity"
+                }
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
               />

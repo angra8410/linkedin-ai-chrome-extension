@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { generate, generateStream } from "../../lib/ollama";
+import {
+  generate,
+  generateStream,
+  type OllamaGenerationOptions,
+} from "../../lib/ollama";
+import { cleanupSourceAdaptation, cleanupTopicExpansion } from "../../lib/sourceCleanup";
 import {
   promptGeneratePost,
   promptRecruiterPost,
@@ -18,6 +23,7 @@ import type {
   ScoreComparisonPayload,
   DraftPromotionPayload,
   ScoringResult,
+  GenerationInputMode,
 } from "../../types";
 
 type Mode = "post" | "recruiter" | "hooks" | "cta";
@@ -49,6 +55,7 @@ const REWRITE_STYLES: RewriteStyle[] = [
   "concise",
   "story",
   "bold",
+  "candid",
   "data-driven",
   "question-led",
   "linkedin-polish",
@@ -57,7 +64,7 @@ const REWRITE_STYLES: RewriteStyle[] = [
 ];
 
 const AUTO_VARIANT_STYLES: RewriteStyle[] = [
-  "linkedin-polish",
+  "candid",
   "more-human",
   "shorter",
 ];
@@ -203,6 +210,7 @@ export default function DraftTab({
   seedPayload,
 }: Props) {
   const [mode, setMode] = useState<Mode>("post");
+  const [inputMode, setInputMode] = useState<GenerationInputMode>("topic");
   const [topic, setTopic] = useState("");
   const [pillar, setPillar] = useState("");
   const [output, setOutput] = useState("");
@@ -227,6 +235,59 @@ export default function DraftTab({
   const model = settings?.defaultModel ?? "llama3.1:latest";
   const ollamaUrl = settings?.ollamaUrl ?? "http://localhost:11434";
   const streamingEnabled = settings?.streamingEnabled ?? true;
+
+  const creativeGenerationOptions: OllamaGenerationOptions = {
+    temperature: 0.75,
+    top_p: 0.82,
+    top_k: 30,
+    repeat_penalty: 1.14,
+  };
+
+  const sourceFaithfulGenerationOptions: OllamaGenerationOptions = {
+    temperature: 0.1,
+    top_p: 0.4,
+    top_k: 10,
+    repeat_penalty: 1.01,
+  };
+
+  const utilityGenerationOptions: OllamaGenerationOptions = {
+    temperature: 0.45,
+    top_p: 0.85,
+    repeat_penalty: 1.08,
+  };
+
+  const scoringGenerationOptions: OllamaGenerationOptions = {
+    temperature: 0.2,
+    top_p: 0.8,
+    repeat_penalty: 1.05,
+  };
+
+  const getRewriteGenerationOptions = (style: RewriteStyle): OllamaGenerationOptions => {
+    if (style === "candid" || style === "more-human" || style === "story") {
+      return {
+        temperature: 1,
+        top_p: 0.92,
+        top_k: 50,
+        repeat_penalty: 1.2,
+      };
+    }
+
+    if (style === "bold") {
+      return {
+        temperature: 0.9,
+        top_p: 0.9,
+        top_k: 40,
+        repeat_penalty: 1.16,
+      };
+    }
+
+    return {
+      temperature: 0.7,
+      top_p: 0.88,
+      top_k: 35,
+      repeat_penalty: 1.12,
+    };
+  };
 
   const canGenerate = !!profile && !!topic.trim() && !loading && !variantLoading;
   const canSuggestHashtags =
@@ -293,12 +354,13 @@ export default function DraftTab({
       return promptGeneratePost(
         profile,
         topic,
-        pillar || profile.contentPillars[0] || ""
+        pillar || profile.contentPillars[0] || "",
+        inputMode
       );
     }
 
     if (mode === "recruiter") {
-      return promptRecruiterPost(profile, topic);
+      return promptRecruiterPost(profile, topic, inputMode);
     }
 
     if (mode === "hooks") {
@@ -308,10 +370,19 @@ export default function DraftTab({
     return promptGenerateCTAs(topic);
   };
 
+  const getBaseGenerationOptions = (): OllamaGenerationOptions => {
+    if ((mode === "post" || mode === "recruiter") && inputMode === "source") {
+      return sourceFaithfulGenerationOptions;
+    }
+
+    return creativeGenerationOptions;
+  };
+
   const runGenerate = async (
     user: string,
     system: string,
-    onProgress?: (text: string) => void
+    onProgress?: (text: string) => void,
+    generationOptions?: OllamaGenerationOptions
   ): Promise<string> => {
     if (streamingEnabled) {
       let finalText = "";
@@ -325,13 +396,14 @@ export default function DraftTab({
           onProgress?.(finalText);
         },
         () => {},
-        ollamaUrl
+        ollamaUrl,
+        generationOptions
       );
 
       return finalText.trim();
     }
 
-    const text = await generate(user, system, model, ollamaUrl);
+    const text = await generate(user, system, model, ollamaUrl, generationOptions);
     const trimmed = text.trim();
     onProgress?.(trimmed);
     return trimmed;
@@ -339,7 +411,7 @@ export default function DraftTab({
 
   const scoreCandidate = async (content: string): Promise<ScoringResult> => {
     const { system, user } = promptScoreDraft(content);
-    const raw = await generate(user, system, model, ollamaUrl);
+    const raw = await generate(user, system, model, ollamaUrl, scoringGenerationOptions);
     return parseScoreResponse(raw, model);
   };
 
@@ -356,7 +428,7 @@ export default function DraftTab({
         pillar || profile.contentPillars[0] || ""
       );
 
-      const raw = await generate(user, system, model, ollamaUrl);
+      const raw = await generate(user, system, model, ollamaUrl, utilityGenerationOptions);
       const parsed = parseHashtagResponse(raw);
 
       setHashtags(parsed);
@@ -388,7 +460,12 @@ export default function DraftTab({
     for (const style of AUTO_VARIANT_STYLES) {
       try {
         const { system, user } = promptRewritePost(profile, baseDraft, style);
-        const rewritten = await runGenerate(user, system);
+        const rewritten = await runGenerate(
+          user,
+          system,
+          undefined,
+          getRewriteGenerationOptions(style)
+        );
 
         if (rewritten) {
           nextVariants.push({
@@ -424,9 +501,15 @@ export default function DraftTab({
     const { system, user } = buildPrompt();
 
     try {
-      const trimmed = await runGenerate(user, system, setOutput);
+      const trimmed = await runGenerate(user, system, setOutput, getBaseGenerationOptions());
+      const finalDraft =
+        mode === "post" || mode === "recruiter"
+          ? inputMode === "source"
+            ? cleanupSourceAdaptation(topic, trimmed)
+            : cleanupTopicExpansion(topic, trimmed)
+          : trimmed;
 
-      if (!trimmed) {
+      if (!finalDraft) {
         setOutput(
           "⚠️ Ollama responded, but no text was returned. Try another model like llama3.1:latest or gemma2:9b."
         );
@@ -434,11 +517,11 @@ export default function DraftTab({
         return;
       }
 
-      setOutput(trimmed);
+      setOutput(finalDraft);
       setLoading(false);
 
       if (mode === "post" || mode === "recruiter") {
-        await generateVariants(trimmed);
+        await generateVariants(finalDraft);
       }
     } catch (error) {
       console.error("Draft generation failed:", error);
@@ -469,7 +552,13 @@ export default function DraftTab({
     try {
       const { system, user } = buildPrompt();
 
-      const mainDraft = await runGenerate(user, system, setOutput);
+      const generatedDraft = await runGenerate(user, system, setOutput, getBaseGenerationOptions());
+      const mainDraft =
+        mode === "post" || mode === "recruiter"
+          ? inputMode === "source"
+            ? cleanupSourceAdaptation(topic, generatedDraft)
+            : cleanupTopicExpansion(topic, generatedDraft)
+          : generatedDraft;
 
       if (!mainDraft) {
         setOutput("⚠️ Ollama responded, but no text was returned.");
@@ -579,7 +668,12 @@ export default function DraftTab({
     const { system, user } = promptRewritePost(profile, output, rewriteStyle);
 
     try {
-      const text = await runGenerate(user, system, setRewriteOutput);
+      const text = await runGenerate(
+        user,
+        system,
+        setRewriteOutput,
+        getRewriteGenerationOptions(rewriteStyle)
+      );
       setRewriteOutput(text?.trim() ? text : "⚠️ Rewrite returned no text.");
       setRewriteLoading(false);
     } catch (error) {
@@ -677,6 +771,7 @@ export default function DraftTab({
             key={m}
             onClick={() => {
               setMode(m);
+              setInputMode("topic");
               setOutput("");
               setVariants([]);
               setHashtags([]);
@@ -787,10 +882,45 @@ export default function DraftTab({
       )}
 
       <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+        {(mode === "post" || mode === "recruiter") && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-gray-600 dark:text-slate-400">
+              Input mode
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setInputMode("topic")}
+                className={`px-3 py-1.5 text-xs rounded-full border transition ${
+                  inputMode === "topic"
+                    ? "bg-linkedin-blue text-white border-linkedin-blue"
+                    : "text-gray-500 border-gray-200 hover:border-gray-400 dark:text-slate-400 dark:border-slate-700 dark:hover:border-slate-500"
+                }`}
+              >
+                Topic idea
+              </button>
+              <button
+                onClick={() => setInputMode("source")}
+                className={`px-3 py-1.5 text-xs rounded-full border transition ${
+                  inputMode === "source"
+                    ? "bg-linkedin-blue text-white border-linkedin-blue"
+                    : "text-gray-500 border-gray-200 hover:border-gray-400 dark:text-slate-400 dark:border-slate-700 dark:hover:border-slate-500"
+                }`}
+              >
+                Adapt source
+              </button>
+            </div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">
+              {inputMode === "source"
+                ? "Preserves the source argument and wording as closely as possible."
+                : "Generates a fresh post from a loose idea or prompt."}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-300">
-            {mode === "post" && "Topic / Idea"}
-            {mode === "recruiter" && "Achievement to showcase"}
+            {mode === "post" && (inputMode === "source" ? "Source material to adapt" : "Topic / Idea")}
+            {mode === "recruiter" && (inputMode === "source" ? "Source material to adapt" : "Achievement to showcase")}
             {mode === "hooks" && "Topic to generate hooks for"}
             {mode === "cta" && "Post topic"}
           </label>
@@ -799,9 +929,13 @@ export default function DraftTab({
             rows={4}
             placeholder={
               mode === "post"
-                ? "e.g. Why data quality matters more than data volume"
+                ? inputMode === "source"
+                  ? "Paste a draft, argument, or source paragraph to adapt faithfully"
+                  : "e.g. Why data quality matters more than data volume"
                 : mode === "recruiter"
-                  ? "e.g. Improved reporting accuracy by redesigning data validation logic"
+                  ? inputMode === "source"
+                    ? "Paste source material to adapt into a recruiter-friendly post"
+                    : "e.g. Improved reporting accuracy by redesigning data validation logic"
                   : mode === "hooks"
                     ? "e.g. Common mistakes in BI dashboard design"
                     : "e.g. Why most dashboards fail to drive decisions"

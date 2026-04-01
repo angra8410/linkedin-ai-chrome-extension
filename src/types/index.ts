@@ -12,6 +12,7 @@ export type RewriteStyle =
 
 export type PostDraftStatus = "draft" | "ready" | "posted";
 export type AppTheme = "light" | "dark";
+export type GenerationInputMode = "topic" | "source";
 
 // ─── Core Data Models ────────────────────────────────────────────────────────
 

@@ -2,6 +2,15 @@ import type { OllamaModel, OllamaStatus, OllamaStreamChunk } from "../types";
 
 const DEFAULT_BASE_URL = "http://localhost:11434";
 
+export interface OllamaGenerationOptions {
+  temperature?: number;
+  top_p?: number;
+  top_k?: number;
+  repeat_penalty?: number;
+  seed?: number;
+  num_predict?: number;
+}
+
 function normalizeBaseUrl(baseUrl: string): string {
   return (baseUrl || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
 }
@@ -105,7 +114,8 @@ export async function generate(
   prompt: string,
   systemMessage: string,
   model: string,
-  baseUrl = DEFAULT_BASE_URL
+  baseUrl = DEFAULT_BASE_URL,
+  generationOptions?: OllamaGenerationOptions
 ): Promise<string> {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
@@ -122,6 +132,7 @@ export async function generate(
         system: systemMessage,
         prompt,
         stream: false,
+        options: generationOptions,
       }),
     });
   } catch (error) {
@@ -145,7 +156,8 @@ export async function generateStream(
   model: string,
   onChunk: (text: string) => void,
   onDone: () => void,
-  baseUrl = DEFAULT_BASE_URL
+  baseUrl = DEFAULT_BASE_URL,
+  generationOptions?: OllamaGenerationOptions
 ): Promise<void> {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
@@ -162,6 +174,7 @@ export async function generateStream(
         system: systemMessage,
         prompt,
         stream: true,
+        options: generationOptions,
       }),
     });
   } catch (error) {
