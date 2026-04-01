@@ -242,16 +242,16 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
   };
 
   const draftStatusColor = (status: PostDraft["status"]) => {
-    if (status === "ready") return "text-green-700 bg-green-100";
-    if (status === "posted") return "text-linkedin-blue bg-linkedin-light";
-    return "text-gray-600 bg-gray-100";
+    if (status === "ready") return "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400";
+    if (status === "posted") return "text-linkedin-blue bg-linkedin-light dark:bg-blue-900/30 dark:text-blue-300";
+    return "text-gray-600 bg-gray-100 dark:bg-slate-800 dark:text-slate-400";
   };
 
   const draftScoreColor = (score?: number) => {
-    if (score === undefined) return "text-gray-400 bg-gray-100";
-    if (score >= 8) return "text-green-700 bg-green-100";
-    if (score >= 6) return "text-yellow-700 bg-yellow-100";
-    return "text-red-700 bg-red-100";
+    if (score === undefined) return "text-gray-400 bg-gray-100 dark:bg-slate-800 dark:text-slate-400";
+    if (score >= 8) return "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400";
+    if (score >= 6) return "text-yellow-700 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400";
+    return "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400";
   };
 
   const formatDate = (timestamp: number) =>
@@ -291,10 +291,10 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
     return (
       <div
         key={draft.id}
-        className="border border-gray-200 rounded-xl p-4 bg-white space-y-3 shadow-sm"
+        className="border border-gray-200 rounded-xl p-4 bg-white space-y-3 shadow-sm dark:bg-slate-900 dark:border-slate-800"
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-gray-400 dark:text-slate-500">
             {getCardTimestampLabel(draft)}
           </div>
 
@@ -320,24 +320,24 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
         </div>
 
         <div>
-          <div className="text-sm font-semibold text-gray-800">
+          <div className="text-sm font-semibold text-gray-800 dark:text-slate-100">
             {draft.prompt || "Untitled draft"}
           </div>
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mt-2">
+          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mt-2 dark:text-slate-300">
             {truncate(draft.content)}
           </div>
         </div>
 
         <div className="flex gap-2 flex-wrap">
           {draft.pillar && (
-            <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+            <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
               {draft.pillar}
             </span>
           )}
-          <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+          <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
             {draft.model}
           </span>
-          <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+          <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full border border-gray-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
             Variants: {draft.variants.length}
           </span>
         </div>
@@ -347,7 +347,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
             <button
               onClick={() => void handleMoveLeft(draft)}
               disabled={isMoving}
-              className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               {isMoving ? "Moving..." : "← Move Left"}
             </button>
@@ -357,7 +357,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
             <button
               onClick={() => void handleMoveRight(draft)}
               disabled={isMoving}
-              className="text-xs px-3 py-1.5 rounded-lg border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light disabled:opacity-50"
+              className="text-xs px-3 py-1.5 rounded-lg border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light disabled:opacity-50 dark:hover:bg-slate-800"
             >
               {isMoving ? "Moving..." : "Move Right →"}
             </button>
@@ -367,7 +367,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
             <button
               onClick={() => void handleSetStatus(draft, "draft")}
               disabled={isMoving}
-              className="text-xs text-gray-600 underline disabled:opacity-50"
+              className="text-xs text-gray-600 underline disabled:opacity-50 dark:text-slate-500"
             >
               Mark Draft
             </button>
@@ -377,7 +377,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
             <button
               onClick={() => void handleSetStatus(draft, "ready")}
               disabled={isMoving}
-              className="text-xs text-green-700 underline disabled:opacity-50"
+              className="text-xs text-green-700 underline disabled:opacity-50 dark:text-green-500"
             >
               Mark Ready
             </button>
@@ -387,7 +387,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
             <button
               onClick={() => void handleSetStatus(draft, "posted")}
               disabled={isMoving}
-              className="text-xs text-linkedin-blue underline disabled:opacity-50"
+              className="text-xs text-linkedin-blue underline disabled:opacity-50 dark:text-blue-400"
             >
               Mark Posted
             </button>
@@ -397,20 +397,20 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
         <div className="flex gap-3 flex-wrap pt-1">
           <button
             onClick={() => handleOpenInDraft(draft)}
-            className="text-xs text-linkedin-blue underline"
+            className="text-xs text-linkedin-blue underline dark:text-blue-400"
           >
             Open in Draft
           </button>
           <button
             onClick={() => navigator.clipboard.writeText(draft.content)}
-            className="text-xs text-linkedin-blue underline"
+            className="text-xs text-linkedin-blue underline dark:text-blue-400"
           >
             Copy
           </button>
           {draft.status === "posted" && (
             <button
               onClick={() => handleLogPerformance(draft)}
-              className="text-xs text-green-700 underline"
+              className="text-xs text-green-700 underline dark:text-green-500"
             >
               {analyticsPrepared ? "Ready in Analytics" : "Log Performance"}
             </button>
@@ -418,14 +418,14 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
           <button
             onClick={() => handleDelete(draft)}
             disabled={isDeleting}
-            className="text-xs text-red-600 underline disabled:opacity-50"
+            className="text-xs text-red-600 underline disabled:opacity-50 dark:text-red-400"
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </button>
         </div>
 
         {draft.status === "posted" && analyticsPrepared && (
-          <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 dark:bg-green-900/20 dark:border-green-900/30 dark:text-green-400">
             Analytics form prepared from this posted draft. Open the Analytics tab to review and save metrics.
           </div>
         )}
@@ -435,17 +435,17 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
 
   return (
     <div className="max-w-7xl space-y-6">
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5 dark:bg-slate-900 dark:border-slate-800">
         <div>
-          <h3 className="font-semibold text-gray-800">Draft Library</h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="font-semibold text-gray-800 dark:text-slate-100">Draft Library</h3>
+          <p className="text-sm text-gray-500 mt-1 dark:text-slate-400">
             Search, filter, sort, reopen, and manage all your saved drafts in one place.
           </p>
         </div>
 
         <div className="grid md:grid-cols-5 gap-3">
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5 dark:text-slate-400">
               Search
             </label>
             <input
@@ -453,18 +453,18 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by topic, content, or pillar..."
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5 dark:text-slate-400">
               Status
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
             >
               <option value="all">All statuses</option>
               <option value="draft">Draft</option>
@@ -474,13 +474,13 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5 dark:text-slate-400">
               Score
             </label>
             <select
               value={scoreFilter}
               onChange={(e) => setScoreFilter(e.target.value as ScoreFilter)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
             >
               <option value="all">All drafts</option>
               <option value="scored">Scored only</option>
@@ -489,13 +489,13 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5 dark:text-slate-400">
               Sort
             </label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
             >
               <option value="newest">Newest</option>
               <option value="highest_score">Highest score</option>
@@ -505,13 +505,13 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5 dark:text-slate-400">
               Pillar
             </label>
             <select
               value={pillarFilter}
               onChange={(e) => setPillarFilter(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
             >
               <option value="all">All pillars</option>
               {pillars.map((pillar) => (
@@ -523,7 +523,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
           </div>
 
           <div className="md:col-span-4 flex items-end">
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-gray-400 dark:text-slate-500">
               Showing {sortedDrafts.length} of {drafts.length} saved drafts
             </div>
           </div>
@@ -537,7 +537,7 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
                 setPillarFilter("all");
                 setSortBy("newest");
               }}
-              className="text-xs text-linkedin-blue underline"
+              className="text-xs text-linkedin-blue underline dark:text-blue-400"
             >
               Reset filters
             </button>
@@ -546,16 +546,16 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
       </div>
 
       <div className="grid xl:grid-cols-3 gap-5">
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h4 className="font-semibold text-gray-800">Draft</h4>
-            <span className="text-xs text-gray-400">{kanbanColumns.draft.length}</span>
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-800">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between dark:border-slate-800">
+            <h4 className="font-semibold text-gray-800 dark:text-slate-100">Draft</h4>
+            <span className="text-xs text-gray-400 dark:text-slate-500">{kanbanColumns.draft.length}</span>
           </div>
-          <div className="p-4 space-y-4 min-h-[220px] bg-gray-50/40">
+          <div className="p-4 space-y-4 min-h-[220px] bg-gray-50/40 dark:bg-slate-800/20">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading drafts...</div>
+              <div className="text-sm text-gray-500 dark:text-slate-400">Loading drafts...</div>
             ) : kanbanColumns.draft.length === 0 ? (
-              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
                 No drafts in this column.
               </div>
             ) : (
@@ -564,16 +564,16 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h4 className="font-semibold text-gray-800">Ready</h4>
-            <span className="text-xs text-gray-400">{kanbanColumns.ready.length}</span>
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-800">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between dark:border-slate-800">
+            <h4 className="font-semibold text-gray-800 dark:text-slate-100">Ready</h4>
+            <span className="text-xs text-gray-400 dark:text-slate-500">{kanbanColumns.ready.length}</span>
           </div>
-          <div className="p-4 space-y-4 min-h-[220px] bg-green-50/30">
+          <div className="p-4 space-y-4 min-h-[220px] bg-green-50/30 dark:bg-green-900/10">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading drafts...</div>
+              <div className="text-sm text-gray-500 dark:text-slate-400">Loading drafts...</div>
             ) : kanbanColumns.ready.length === 0 ? (
-              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
                 No drafts in this column.
               </div>
             ) : (
@@ -582,16 +582,16 @@ export default function DraftLibraryTab({ onOpenInDraft }: Props) {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h4 className="font-semibold text-gray-800">Posted</h4>
-            <span className="text-xs text-gray-400">{kanbanColumns.posted.length}</span>
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-800">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between dark:border-slate-800">
+            <h4 className="font-semibold text-gray-800 dark:text-slate-100">Posted</h4>
+            <span className="text-xs text-gray-400 dark:text-slate-500">{kanbanColumns.posted.length}</span>
           </div>
-          <div className="p-4 space-y-4 min-h-[220px] bg-linkedin-light/40">
+          <div className="p-4 space-y-4 min-h-[220px] bg-linkedin-light/40 dark:bg-blue-900/10">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading drafts...</div>
+              <div className="text-sm text-gray-500 dark:text-slate-400">Loading drafts...</div>
             ) : kanbanColumns.posted.length === 0 ? (
-              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+              <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
                 No drafts in this column.
               </div>
             ) : (

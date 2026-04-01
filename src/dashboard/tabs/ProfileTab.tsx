@@ -83,10 +83,10 @@ export default function ProfileTab({ onSave }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5 dark:bg-slate-900 dark:border-slate-800">
         <div>
-          <h3 className="font-semibold text-gray-800">Brand Profile</h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <h3 className="font-semibold text-gray-800 dark:text-slate-100">Brand Profile</h3>
+          <p className="text-xs text-gray-400 mt-1 dark:text-slate-400">
             This is injected into every AI prompt to personalize your content.
           </p>
         </div>
@@ -172,7 +172,7 @@ export default function ProfileTab({ onSave }: Props) {
                 className={`px-3 py-1.5 text-xs rounded-full border transition ${
                   form.tone === t
                     ? "bg-linkedin-blue text-white border-linkedin-blue"
-                    : "border-gray-200 text-gray-600 hover:border-linkedin-blue"
+                    : "border-gray-200 text-gray-600 hover:border-linkedin-blue dark:border-slate-700 dark:text-slate-400 dark:hover:border-blue-400"
                 }`}
               >
                 {t}
@@ -206,12 +206,12 @@ export default function ProfileTab({ onSave }: Props) {
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {hint && <p className="text-xs text-gray-400 mb-1.5">{hint}</p>}
+      <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">{label}</label>
+      {hint && <p className="text-xs text-gray-400 mb-1.5 dark:text-slate-500">{hint}</p>}
       {children}
     </div>
   );
 }
 
 const inputCls =
-  "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue";
+  "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500";

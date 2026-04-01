@@ -411,16 +411,16 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
   };
 
   const draftScoreColor = (score?: number) => {
-    if (score === undefined) return "text-gray-400 bg-gray-100";
-    if (score >= 8) return "text-green-700 bg-green-100";
-    if (score >= 6) return "text-yellow-700 bg-yellow-100";
-    return "text-red-700 bg-red-100";
+    if (score === undefined) return "text-gray-400 bg-gray-100 dark:bg-slate-800 dark:text-slate-400";
+    if (score >= 8) return "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400";
+    if (score >= 6) return "text-yellow-700 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400";
+    return "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400";
   };
 
   const draftStatusColor = (status: PostDraft["status"]) => {
-    if (status === "ready") return "text-green-700 bg-green-100";
-    if (status === "posted") return "text-linkedin-blue bg-linkedin-light";
-    return "text-gray-600 bg-gray-100";
+    if (status === "posted") return "text-linkedin-blue bg-linkedin-light dark:bg-blue-900/30 dark:text-blue-300";
+    if (status === "ready") return "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400";
+    return "text-gray-600 bg-gray-100 dark:bg-slate-800 dark:text-slate-400";
   };
 
   const formatDate = (timestamp: number) => {
@@ -527,23 +527,23 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border border-gray-200 rounded-2xl p-4 shadow-sm">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border border-gray-200 rounded-2xl p-4 shadow-sm dark:bg-slate-900/95 dark:border-slate-800">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => scrollToSection(formSectionRef)}
-            className="text-xs px-3 py-2 rounded-full border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light transition"
+            className="text-xs px-3 py-2 rounded-full border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light transition dark:hover:bg-slate-800"
           >
             Performance Form
           </button>
           <button
             onClick={() => scrollToSection(insightsSectionRef)}
-            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Insights
           </button>
           <button
             onClick={() => scrollToSection(recentPostsSectionRef)}
-            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Recent Posts
           </button>
@@ -554,7 +554,7 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                 scrollToSection(draftHistorySectionRef);
               });
             }}
-            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+            className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Draft History
           </button>
@@ -564,28 +564,28 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
       {/* Log a post */}
       <div
         ref={formSectionRef}
-        className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4"
+        className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800"
       >
-        <h3 className="font-semibold text-gray-800">Log Post Performance</h3>
-        <p className="text-xs text-gray-400">
+        <h3 className="font-semibold text-gray-800 dark:text-slate-100">Log Post Performance</h3>
+        <p className="text-xs text-gray-400 dark:text-slate-400">
           Manually enter metrics from LinkedIn. Your data stays on your device.
         </p>
 
         {editingLog && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2 dark:bg-blue-900/20 dark:border-blue-900/30">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-blue-800">
+              <div className="text-sm font-semibold text-blue-800 dark:text-blue-300">
                 Editing existing metrics entry
               </div>
               <button
                 onClick={handleCancelEdit}
-                className="text-xs text-blue-700 underline"
+                className="text-xs text-blue-700 underline dark:text-blue-400"
               >
                 Cancel edit
               </button>
             </div>
 
-            <div className="text-sm text-blue-800">
+            <div className="text-sm text-blue-800 dark:text-blue-300">
               <span className="font-medium">{editingLog.postTitle}</span>
               {" · "}
               Posted {formatDateTime(editingLog.postedAt)}
@@ -596,20 +596,20 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
         )}
 
         {seed && !editingLog && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2 dark:bg-green-900/20 dark:border-green-900/30">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-green-800">
+              <div className="text-sm font-semibold text-green-800 dark:text-green-300">
                 Prefilled from posted draft
               </div>
               <button
                 onClick={handleClearPrefill}
-                className="text-xs text-green-700 underline"
+                className="text-xs text-green-700 underline dark:text-green-400"
               >
                 Clear prefill
               </button>
             </div>
 
-            <div className="text-sm text-green-800">
+            <div className="text-sm text-green-800 dark:text-green-300">
               <span className="font-medium">{seed.postTitle}</span>
               {" · "}
               {seed.pillar || "No pillar"}
@@ -618,12 +618,12 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
             </div>
 
             {seedPreview && (
-              <div className="text-xs text-green-700">
+              <div className="text-xs text-green-700 dark:text-green-400">
                 {seedPreview}
               </div>
             )}
 
-            <div className="text-xs text-green-700">
+            <div className="text-xs text-green-700 dark:text-green-400">
               Metrics remain fully editable before saving.
             </div>
           </div>
@@ -631,12 +631,12 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-600 mb-1 block">
+            <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">
               Post title / topic
             </label>
             <input
               type="text"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
               placeholder="e.g. Why data quality matters more than volume"
               value={form.postTitle}
               onChange={(e) => setForm({ ...form, postTitle: e.target.value })}
@@ -644,9 +644,9 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Pillar</label>
+            <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Pillar</label>
             <select
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
               value={form.pillar}
               onChange={(e) => setForm({ ...form, pillar: e.target.value })}
             >
@@ -660,9 +660,9 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Format</label>
+            <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Format</label>
             <select
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
               value={form.format}
               onChange={(e) =>
                 setForm({ ...form, format: e.target.value as PerformanceLog["format"] })
@@ -677,12 +677,12 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
           </div>
 
           <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-600 mb-1 block">
+            <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">
               Posted date and time
             </label>
             <input
               type="datetime-local"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
               value={form.postedAt}
               onChange={(e) => setForm({ ...form, postedAt: e.target.value })}
             />
@@ -698,13 +698,13 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
             ] as const
           ).map((field) => (
             <div key={field}>
-              <label className="text-xs font-medium text-gray-600 mb-1 block capitalize">
+              <label className="text-xs font-medium text-gray-600 mb-1 block capitalize dark:text-slate-400">
                 {field === "profileViews" ? "Profile views (approx)" : field}
               </label>
               <input
                 type="number"
                 min={0}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                 value={form[field] || ""}
                 onChange={(e) =>
                   setForm({ ...form, [field]: parseInt(e.target.value, 10) || 0 })
@@ -714,10 +714,10 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
           ))}
 
           <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Notes</label>
+            <label className="text-xs font-medium text-gray-600 mb-1 block dark:text-slate-400">Notes</label>
             <input
               type="text"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
               placeholder="e.g. Posted at 8am, got a recruiter DM"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -743,15 +743,15 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
       {/* Insight engine */}
       <div
         ref={insightsSectionRef}
-        className="bg-white rounded-2xl border border-gray-200 p-6 space-y-3"
+        className="bg-white rounded-2xl border border-gray-200 p-6 space-y-3 dark:bg-slate-900 dark:border-slate-800"
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800">AI Insights</h3>
-          <span className="text-xs text-gray-400">{logs.length} posts logged</span>
+          <h3 className="font-semibold text-gray-800 dark:text-slate-100">AI Insights</h3>
+          <span className="text-xs text-gray-400 dark:text-slate-500">{logs.length} posts logged</span>
         </div>
 
         {logs.length < 3 ? (
-          <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+          <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
             Log at least 3 posts to generate insights.
           </div>
         ) : (
@@ -759,12 +759,12 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
             <button
               onClick={handleInsight}
               disabled={insightLoading}
-              className="px-4 py-2.5 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40"
+              className="px-4 py-2.5 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40 dark:bg-slate-700 dark:hover:bg-slate-600"
             >
               {insightLoading ? "Analyzing..." : "✦ Analyze Performance"}
             </button>
             {insight && (
-              <div className="bg-linkedin-light rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+              <div className="bg-linkedin-light rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed dark:bg-blue-900/20 dark:text-slate-300">
                 {insight}
               </div>
             )}
@@ -775,33 +775,33 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
       {/* Log table */}
       <div
         ref={recentPostsSectionRef}
-        className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
+        className="bg-white rounded-2xl border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-800"
       >
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 dark:border-slate-800">
           <div>
-            <h3 className="font-semibold text-gray-800 text-sm">Recent Posts</h3>
-            <span className="text-xs text-gray-400">{logs.length} logged</span>
+            <h3 className="font-semibold text-gray-800 text-sm dark:text-slate-100">Recent Posts</h3>
+            <span className="text-xs text-gray-400 dark:text-slate-500">{logs.length} logged</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleExportCsv}
               disabled={exportRows.length === 0}
-              className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition disabled:opacity-40"
+              className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Export CSV
             </button>
             <button
               onClick={handleExportTxt}
               disabled={exportRows.length === 0}
-              className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition disabled:opacity-40"
+              className="text-xs px-3 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Export TXT
             </button>
             <button
               onClick={handleExportExcel}
               disabled={exportRows.length === 0}
-              className="text-xs px-3 py-2 rounded-full border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light transition disabled:opacity-40"
+              className="text-xs px-3 py-2 rounded-full border border-linkedin-blue text-linkedin-blue hover:bg-linkedin-light transition disabled:opacity-40 dark:hover:bg-slate-800"
             >
               Export Excel
             </button>
@@ -810,14 +810,14 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
         {logs.length === 0 ? (
           <div className="p-6">
-            <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+            <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
               No performance entries yet. Save one from the form above to start tracking results.
             </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-gray-50 text-gray-500 text-left">
+              <thead className="bg-gray-50 text-gray-500 text-left dark:bg-slate-800/50 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3 font-medium">Post</th>
                   <th className="px-4 py-3 font-medium">Posted</th>
@@ -829,30 +829,30 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 font-medium text-gray-700 max-w-[220px] truncate">
+                  <tr key={log.id} className="hover:bg-gray-50 transition dark:hover:bg-slate-800/50">
+                    <td className="px-4 py-3 font-medium text-gray-700 max-w-[220px] truncate dark:text-slate-200">
                       {log.postTitle}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
                       {formatDateTime(log.postedAt)}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
                       {formatDateTime(log.updatedAt ?? log.createdAt)}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{log.pillar || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-gray-500 dark:text-slate-500">{log.pillar || "—"}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
                       {log.impressions.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{log.reactions}</td>
-                    <td className="px-4 py-3 text-linkedin-blue font-semibold">
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{log.reactions}</td>
+                    <td className="px-4 py-3 text-linkedin-blue font-semibold dark:text-blue-400">
                       {engagementRate(log)}
                     </td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleEditMetrics(log)}
-                        className="text-linkedin-blue underline"
+                        className="text-linkedin-blue underline dark:text-blue-400"
                       >
                         Edit metrics
                       </button>
@@ -868,23 +868,23 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
       {/* Draft history */}
       <div
         ref={draftHistorySectionRef}
-        className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
+        className="bg-white rounded-2xl border border-gray-200 overflow-hidden dark:bg-slate-900 dark:border-slate-800"
       >
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between dark:border-slate-800">
           <div>
-            <h3 className="font-semibold text-gray-800">Draft History</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h3 className="font-semibold text-gray-800 dark:text-slate-100">Draft History</h3>
+            <p className="text-xs text-gray-400 mt-0.5 dark:text-slate-400">
               Review your recent saved drafts and the strongest scored ones.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 dark:text-slate-500">
               {recentDrafts.length} recent · {scoredDrafts.length} scored
             </span>
             <button
               onClick={() => setDraftHistoryOpen((current) => !current)}
-              className="text-xs text-linkedin-blue underline"
+              className="text-xs text-linkedin-blue underline dark:text-blue-400"
             >
               {draftHistoryOpen ? "Collapse" : "Expand"}
             </button>
@@ -893,20 +893,20 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
         {!draftHistoryOpen ? (
           <div className="p-6">
-            <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+            <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
               Draft History is collapsed to keep analytics front and center. Expand it when you want to review older drafts.
             </div>
           </div>
         ) : (
           <div className="grid lg:grid-cols-2 gap-0">
-            <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100 space-y-4">
+            <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100 space-y-4 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-gray-700">Top scored drafts</h4>
-                <span className="text-xs text-gray-400">Best first</span>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300">Top scored drafts</h4>
+                <span className="text-xs text-gray-400 dark:text-slate-500">Best first</span>
               </div>
 
               {scoredDrafts.length === 0 ? (
-                <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+                <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
                   No scored drafts yet. Score a draft in the Score tab, promote it back to Draft, and save it.
                 </div>
               ) : (
@@ -917,10 +917,10 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                     return (
                       <div
                         key={draft.id}
-                        className="border border-gray-200 rounded-xl p-4 bg-green-50/30 space-y-3"
+                        className="border border-gray-200 rounded-xl p-4 bg-green-50/30 space-y-3 dark:bg-green-900/10 dark:border-slate-800"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-gray-400 dark:text-slate-500">
                             {draft.status === "posted" && draft.postedAt
                               ? `Posted · ${formatDateTime(draft.postedAt)}`
                               : `Created · ${formatDate(draft.createdAt)}`}
@@ -943,34 +943,34 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                           </div>
                         </div>
 
-                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap dark:text-slate-300">
                           {truncate(draft.content, 260)}
                         </div>
 
                         <div className="flex gap-3 flex-wrap">
                           <button
                             onClick={() => navigator.clipboard.writeText(draft.content)}
-                            className="text-xs text-linkedin-blue underline"
+                            className="text-xs text-linkedin-blue underline dark:text-blue-400"
                           >
                             Copy draft
                           </button>
                           <button
                             onClick={() => reuseDraft(draft)}
-                            className="text-xs text-linkedin-blue underline"
+                            className="text-xs text-linkedin-blue underline dark:text-blue-400"
                           >
                             Reuse in Draft
                           </button>
                           <button
                             onClick={() => handleDeleteDraft(draft)}
                             disabled={isDeleting}
-                            className="text-xs text-red-600 underline disabled:opacity-50"
+                            className="text-xs text-red-600 underline disabled:opacity-50 dark:text-red-400"
                           >
                             {isDeleting ? "Deleting..." : "Delete draft"}
                           </button>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-400 dark:text-slate-500">
                             Model: {draft.model}
                           </span>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-400 dark:text-slate-500">
                             Pillar: {draft.pillar || "—"}
                           </span>
                         </div>
@@ -983,12 +983,12 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
 
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-gray-700">Recent saved drafts</h4>
-                <span className="text-xs text-gray-400">Most recent first</span>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300">Recent saved drafts</h4>
+                <span className="text-xs text-gray-400 dark:text-slate-500">Most recent first</span>
               </div>
 
               {recentDrafts.length === 0 ? (
-                <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+                <div className="text-sm text-gray-500 bg-gray-50 rounded-xl p-4 dark:bg-slate-800/50 dark:text-slate-400">
                   No saved drafts yet. Save one from the Draft tab to start building your local content history.
                 </div>
               ) : (
@@ -999,10 +999,10 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                     return (
                       <div
                         key={draft.id}
-                        className="border border-gray-200 rounded-xl p-4 bg-gray-50/60 space-y-3"
+                        className="border border-gray-200 rounded-xl p-4 bg-gray-50/60 space-y-3 dark:bg-slate-800/50 dark:border-slate-800"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-gray-400 dark:text-slate-500">
                             {draft.status === "posted" && draft.postedAt
                               ? `Posted · ${formatDateTime(draft.postedAt)}`
                               : `Created · ${formatDate(draft.createdAt)}`}
@@ -1027,34 +1027,34 @@ export default function AnalyticsTab({ profile, settings, onReuseInDraft }: Prop
                           </div>
                         </div>
 
-                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap dark:text-slate-300">
                           {truncate(draft.content, 220)}
                         </div>
 
                         <div className="flex gap-3 flex-wrap">
                           <button
                             onClick={() => navigator.clipboard.writeText(draft.content)}
-                            className="text-xs text-linkedin-blue underline"
+                            className="text-xs text-linkedin-blue underline dark:text-blue-400"
                           >
                             Copy draft
                           </button>
                           <button
                             onClick={() => reuseDraft(draft)}
-                            className="text-xs text-linkedin-blue underline"
+                            className="text-xs text-linkedin-blue underline dark:text-blue-400"
                           >
                             Reuse in Draft
                           </button>
                           <button
                             onClick={() => handleDeleteDraft(draft)}
                             disabled={isDeleting}
-                            className="text-xs text-red-600 underline disabled:opacity-50"
+                            className="text-xs text-red-600 underline disabled:opacity-50 dark:text-red-400"
                           >
                             {isDeleting ? "Deleting..." : "Delete draft"}
                           </button>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-400 dark:text-slate-500">
                             Variants: {draft.variants.length}
                           </span>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-400 dark:text-slate-500">
                             Pillar: {draft.pillar || "—"}
                           </span>
                         </div>

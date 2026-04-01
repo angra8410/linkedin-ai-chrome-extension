@@ -170,9 +170,9 @@ export default function ScoreTab({
   };
 
   const totalColor = (score: number) => {
-    if (score >= 8) return "text-green-600";
-    if (score >= 5) return "text-yellow-600";
-    return "text-red-500";
+    if (score >= 8) return "text-green-600 dark:text-green-400";
+    if (score >= 5) return "text-yellow-600 dark:text-yellow-400";
+    return "text-red-500 dark:text-red-400";
   };
 
   const recommendationText = (card: VariantScoreCard) => {
@@ -197,15 +197,15 @@ export default function ScoreTab({
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5 dark:bg-slate-900 dark:border-slate-800">
         <div>
-          <h3 className="font-semibold text-gray-800">Compare draft quality</h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="font-semibold text-gray-800 dark:text-slate-100">Compare draft quality</h3>
+          <p className="text-sm text-gray-500 mt-1 dark:text-slate-400">
             Paste your main draft and up to 3 variants. The extension will score each one and identify the strongest option.
           </p>
 
           {seedPayload && (
-            <p className="text-xs text-linkedin-blue mt-2">
+            <p className="text-xs text-linkedin-blue mt-2 dark:text-blue-400">
               Draft bundle received from Draft tab{seedPayload.sourceTopic ? ` · Topic: ${seedPayload.sourceTopic}` : ""}.
             </p>
           )}
@@ -214,11 +214,11 @@ export default function ScoreTab({
         <div className="grid gap-4">
           {(Object.keys(drafts) as VariantKey[]).map((key) => (
             <div key={key}>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-300">
                 {VARIANT_LABELS[key]}
               </label>
               <textarea
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
                 rows={key === "main" ? 6 : 4}
                 placeholder={
                   key === "main"
@@ -229,7 +229,7 @@ export default function ScoreTab({
                 onChange={(e) => handleChange(key, e.target.value)}
               />
               <div className="flex justify-between mt-1">
-                <span className="text-xs text-gray-400">{drafts[key].length} chars</span>
+                <span className="text-xs text-gray-400 dark:text-slate-500">{drafts[key].length} chars</span>
                 {drafts[key].length > 1300 && (
                   <span className="text-xs text-orange-500">
                     ⚠ Over LinkedIn's recommended 1,300 chars
@@ -240,7 +240,7 @@ export default function ScoreTab({
           ))}
         </div>
 
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-slate-400">
           Active model: <span className="font-medium">{model}</span>
         </div>
 
@@ -253,39 +253,39 @@ export default function ScoreTab({
         </button>
 
         {error && (
-          <div className="bg-red-50 text-red-700 text-sm rounded-xl p-3">{error}</div>
+          <div className="bg-red-50 text-red-700 text-sm rounded-xl p-3 dark:bg-red-900/20 dark:text-red-400">{error}</div>
         )}
       </div>
 
       {bestOverall && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-6 space-y-3">
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-6 space-y-3 dark:bg-green-900/20 dark:border-green-900/30">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-green-800">Best overall</div>
-              <div className="text-xs text-green-700 mt-1">
+              <div className="text-sm font-semibold text-green-800 dark:text-green-300">Best overall</div>
+              <div className="text-xs text-green-700 mt-1 dark:text-green-400">
                 {bestOverall.label} scored highest overall at {bestOverall.result.totalScore.toFixed(1)}/10.
               </div>
             </div>
             <div className={`text-3xl font-bold ${totalColor(bestOverall.result.totalScore)}`}>
               {bestOverall.result.totalScore.toFixed(1)}
-              <span className="text-base font-normal text-gray-400">/10</span>
+              <span className="text-base font-normal text-gray-400 dark:text-slate-500">/10</span>
             </div>
           </div>
 
-          <div className="bg-white/70 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="bg-white/70 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap dark:bg-slate-800/70 dark:text-slate-200">
             {bestOverall.draft}
           </div>
 
           <div className="flex gap-3 flex-wrap">
             <button
               onClick={() => navigator.clipboard.writeText(bestOverall.draft)}
-              className="text-xs text-linkedin-blue underline"
+              className="text-xs text-linkedin-blue underline dark:text-blue-400"
             >
               Copy best draft
             </button>
             <button
               onClick={() => promoteDraft(bestOverall)}
-              className="text-xs text-linkedin-blue underline"
+              className="text-xs text-linkedin-blue underline dark:text-blue-400"
             >
               Use best draft in Draft tab
             </button>
@@ -298,40 +298,40 @@ export default function ScoreTab({
           {results.map((card) => (
             <div
               key={card.key}
-              className={`bg-white rounded-2xl border p-6 space-y-5 ${
+              className={`bg-white rounded-2xl border p-6 space-y-5 dark:bg-slate-900 ${
                 bestOverall?.key === card.key
-                  ? "border-green-300 ring-2 ring-green-100"
-                  : "border-gray-200"
+                  ? "border-green-300 ring-2 ring-green-100 dark:border-green-900/50 dark:ring-green-900/20"
+                  : "border-gray-200 dark:border-slate-800"
               }`}
             >
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-semibold text-gray-800">{card.label}</h3>
-                  <p className="text-xs text-gray-500 mt-1">{recommendationText(card)}</p>
+                  <h3 className="font-semibold text-gray-800 dark:text-slate-100">{card.label}</h3>
+                  <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">{recommendationText(card)}</p>
                 </div>
                 <div className="text-right">
                   {bestOverall?.key === card.key && (
-                    <div className="text-xs font-semibold text-green-700 mb-1">Best overall</div>
+                    <div className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">Best overall</div>
                   )}
                   <div className={`text-3xl font-bold ${totalColor(card.result.totalScore)}`}>
                     {card.result.totalScore.toFixed(1)}
-                    <span className="text-base font-normal text-gray-400">/10</span>
+                    <span className="text-base font-normal text-gray-400 dark:text-slate-500">/10</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap">
+              <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap dark:bg-slate-800/50 dark:text-slate-300">
                 {card.draft}
               </div>
 
               <div className="space-y-3">
                 {Object.entries(card.result.scores).map(([key, val]) => (
                   <div key={key}>
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1 dark:text-slate-400">
                       <span>{SCORE_LABELS[key] ?? key}</span>
-                      <span className="font-semibold">{val}/10</span>
+                      <span className="font-semibold dark:text-slate-200">{val}/10</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden dark:bg-slate-800">
                       <div
                         className={`h-full rounded-full ${scoreColor(val)} transition-all duration-500`}
                         style={{ width: `${val * 10}%` }}
@@ -343,13 +343,13 @@ export default function ScoreTab({
 
               {card.result.feedback.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2 dark:text-slate-200">
                     Improvement suggestions
                   </h4>
                   <ul className="space-y-2">
                     {card.result.feedback.map((tip, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-gray-600">
-                        <span className="text-linkedin-blue font-bold shrink-0">{i + 1}.</span>
+                      <li key={i} className="flex gap-2 text-sm text-gray-600 dark:text-slate-400">
+                        <span className="text-linkedin-blue font-bold shrink-0 dark:text-blue-400">{i + 1}.</span>
                         <span>{tip}</span>
                       </li>
                     ))}
@@ -360,13 +360,13 @@ export default function ScoreTab({
               <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={() => navigator.clipboard.writeText(card.draft)}
-                  className="text-xs text-linkedin-blue underline"
+                  className="text-xs text-linkedin-blue underline dark:text-blue-400"
                 >
                   Copy this draft
                 </button>
                 <button
                   onClick={() => promoteDraft(card)}
-                  className="text-xs text-linkedin-blue underline"
+                  className="text-xs text-linkedin-blue underline dark:text-blue-400"
                 >
                   Use this draft in Draft tab
                 </button>

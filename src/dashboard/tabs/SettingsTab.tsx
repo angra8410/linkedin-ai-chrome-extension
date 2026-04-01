@@ -110,31 +110,31 @@ export default function SettingsTab({ onSave }: Props) {
   };
 
   const statusColors: Record<OllamaStatus, string> = {
-    checking: "text-yellow-600 bg-yellow-50",
-    online: "text-green-700 bg-green-50",
-    offline: "text-red-600 bg-red-50",
-    error: "text-orange-600 bg-orange-50",
+    checking: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400",
+    online: "text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400",
+    offline: "text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400",
+    error: "text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400",
   };
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-        <h3 className="font-semibold text-gray-800">Ollama Configuration</h3>
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5 dark:bg-slate-900 dark:border-slate-800">
+        <h3 className="font-semibold text-gray-800 dark:text-slate-100">Ollama Configuration</h3>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+          <label className="text-sm font-medium text-gray-700 mb-1.5 block dark:text-slate-300">
             Ollama URL
           </label>
           <div className="flex gap-2">
             <input
               type="text"
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
               value={ollamaUrl}
               onChange={(e) => setOllamaUrl(e.target.value)}
             />
             <button
               onClick={() => refreshOllamaStatus(ollamaUrl, defaultModel)}
-              className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+              className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-300"
             >
               Test
             </button>
@@ -149,13 +149,13 @@ export default function SettingsTab({ onSave }: Props) {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+          <label className="text-sm font-medium text-gray-700 mb-1.5 block dark:text-slate-300">
             Active Model
           </label>
 
           {availableModels.length > 0 ? (
             <select
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
               value={defaultModel}
               onChange={(e) => setDefaultModel(e.target.value)}
             >
@@ -168,7 +168,7 @@ export default function SettingsTab({ onSave }: Props) {
           ) : (
             <input
               type="text"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
               value={defaultModel}
               onChange={(e) => setDefaultModel(e.target.value)}
               placeholder={FALLBACK_MODEL}
@@ -176,7 +176,7 @@ export default function SettingsTab({ onSave }: Props) {
           )}
 
           {availableModels.length > 0 && !availableModels.some((m) => m.name === defaultModel) && (
-            <p className="text-xs text-orange-600 mt-2">
+            <p className="text-xs text-orange-600 mt-2 dark:text-orange-400">
               The saved model was not found in Ollama, so choose one from the detected list.
             </p>
           )}
@@ -186,7 +186,7 @@ export default function SettingsTab({ onSave }: Props) {
           <div
             onClick={() => setStreamingEnabled((p) => !p)}
             className={`w-11 h-6 rounded-full transition relative ${
-              streamingEnabled ? "bg-linkedin-blue" : "bg-gray-300"
+              streamingEnabled ? "bg-linkedin-blue" : "bg-gray-300 dark:bg-slate-700"
             }`}
           >
             <span
@@ -195,7 +195,7 @@ export default function SettingsTab({ onSave }: Props) {
               }`}
             />
           </div>
-          <span className="text-sm text-gray-700">Streaming responses</span>
+          <span className="text-sm text-gray-700 dark:text-slate-300">Streaming responses</span>
         </label>
 
         <button
@@ -207,27 +207,27 @@ export default function SettingsTab({ onSave }: Props) {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-800 mb-4">Recommended Models</h3>
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-800">
+        <h3 className="font-semibold text-gray-800 mb-4 dark:text-slate-100">Recommended Models</h3>
         <div className="space-y-3">
           {RECOMMENDED_MODELS.map((m) => (
-            <div key={m.name} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition">
+            <div key={m.name} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50 transition dark:border-slate-800 dark:hover:bg-slate-800/50">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-gray-800">{m.name}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{m.desc}</div>
+                  <div className="text-sm font-semibold text-gray-800 dark:text-slate-100">{m.name}</div>
+                  <div className="text-xs text-gray-500 mt-0.5 dark:text-slate-400">{m.desc}</div>
                 </div>
                 <button
                   onClick={() => {
                     setDefaultModel(m.name);
                     navigator.clipboard.writeText(m.pull);
                   }}
-                  className="text-xs px-3 py-1.5 border border-linkedin-blue text-linkedin-blue rounded-lg hover:bg-linkedin-light transition shrink-0"
+                  className="text-xs px-3 py-1.5 border border-linkedin-blue text-linkedin-blue rounded-lg hover:bg-linkedin-light transition shrink-0 dark:hover:bg-blue-900/20"
                 >
                   Use
                 </button>
               </div>
-              <code className="mt-2 block text-xs bg-gray-800 text-green-300 rounded-lg px-3 py-2">
+              <code className="mt-2 block text-xs bg-gray-800 text-green-300 rounded-lg px-3 py-2 dark:bg-slate-950">
                 {m.pull}
               </code>
             </div>
@@ -235,9 +235,9 @@ export default function SettingsTab({ onSave }: Props) {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-red-100 p-6">
-        <h3 className="font-semibold text-red-700 mb-2 text-sm">Danger Zone</h3>
-        <p className="text-xs text-gray-500 mb-3">
+      <div className="bg-white rounded-2xl border border-red-100 p-6 dark:bg-slate-900 dark:border-red-900/20">
+        <h3 className="font-semibold text-red-700 mb-2 text-sm dark:text-red-400">Danger Zone</h3>
+        <p className="text-xs text-gray-500 mb-3 dark:text-slate-400">
           Clear all settings. Your profile and logs will remain in IndexedDB.
         </p>
         <button
@@ -251,14 +251,14 @@ export default function SettingsTab({ onSave }: Props) {
               onSave();
             }
           }}
-          className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition"
+          className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition dark:border-red-900/30 dark:hover:bg-red-900/20"
         >
           Reset Settings
         </button>
       </div>
 
       {settings && (
-        <div className="text-xs text-gray-400 px-1">
+        <div className="text-xs text-gray-400 px-1 dark:text-slate-500">
           Current saved URL: {settings.ollamaUrl} · Current saved model: {settings.defaultModel}
         </div>
       )}

@@ -666,7 +666,7 @@ export default function DraftTab({
   return (
     <div className="max-w-4xl space-y-6">
       {!profile && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-900/30 dark:text-yellow-200">
           Set up your brand profile to unlock personalized AI generation.
         </div>
       )}
@@ -690,7 +690,7 @@ export default function DraftTab({
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
               mode === m
                 ? "bg-linkedin-blue text-white border-linkedin-blue"
-                : "text-gray-600 border-gray-200 hover:border-linkedin-blue hover:text-linkedin-blue"
+                : "text-gray-600 border-gray-200 hover:border-linkedin-blue hover:text-linkedin-blue dark:text-slate-400 dark:border-slate-700 dark:hover:text-blue-400"
             }`}
           >
             {m === "post" && "📝 Post"}
@@ -702,7 +702,7 @@ export default function DraftTab({
       </div>
 
       {seedPayload && lastSeedAt === seedPayload.createdAt && !seedPayload.autoGenerate && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 dark:bg-green-900/20 dark:border-green-900/30 dark:text-green-200">
           Draft received from {seedPayload.sourceLabel ?? "another tab"}.
         </div>
       )}
@@ -711,22 +711,22 @@ export default function DraftTab({
         <div
           className={`rounded-2xl border p-4 space-y-4 ${
             pipelineStage === "error"
-              ? "bg-red-50 border-red-200"
+              ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900/30"
               : pipelineStage === "done"
-                ? "bg-green-50 border-green-200"
-                : "bg-blue-50 border-blue-200"
+                ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-900/30"
+                : "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-900/30"
           }`}
         >
           <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-gray-800">
+            <div className="text-sm font-semibold text-gray-800 dark:text-slate-100">
               Automatic Draft Pipeline
             </div>
-            <div className="text-xs font-medium text-gray-500">
+            <div className="text-xs font-medium text-gray-500 dark:text-slate-400">
               {getPipelineStep(pipelineStage)}/6
             </div>
           </div>
 
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-gray-700 dark:text-slate-300">
             {workflowMessage || getPipelineLabel(pipelineStage)}
           </div>
 
@@ -752,10 +752,10 @@ export default function DraftTab({
                   key={stepLabel}
                   className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${
                     done
-                      ? "bg-white/80 text-green-700"
+                      ? "bg-white/80 text-green-700 dark:bg-slate-800/80 dark:text-green-400"
                       : active
-                        ? "bg-white text-linkedin-blue"
-                        : "bg-white/50 text-gray-400"
+                        ? "bg-white text-linkedin-blue dark:bg-slate-800 dark:text-blue-300"
+                        : "bg-white/50 text-gray-400 dark:bg-slate-800/50 dark:text-slate-500"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -773,29 +773,29 @@ export default function DraftTab({
           </div>
 
           {pipelineError && (
-            <div className="text-xs text-red-700 bg-white/70 rounded-lg px-3 py-2">
+            <div className="text-xs text-red-700 bg-white/70 rounded-lg px-3 py-2 dark:text-red-400 dark:bg-red-900/30">
               {pipelineError}
             </div>
           )}
 
           {autoSavedDraftId && pipelineStage === "done" && (
-            <div className="text-xs text-green-700 font-medium">
+            <div className="text-xs text-green-700 font-medium dark:text-green-400">
               Best draft candidate saved automatically.
             </div>
           )}
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-300">
             {mode === "post" && "Topic / Idea"}
             {mode === "recruiter" && "Achievement to showcase"}
             {mode === "hooks" && "Topic to generate hooks for"}
             {mode === "cta" && "Post topic"}
           </label>
           <textarea
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
             rows={4}
             placeholder={
               mode === "post"
@@ -813,11 +813,11 @@ export default function DraftTab({
 
         {mode === "post" && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5 dark:text-slate-300">
               Content Pillar
             </label>
             <select
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
               value={pillar}
               onChange={(e) => setPillar(e.target.value)}
             >
@@ -831,7 +831,7 @@ export default function DraftTab({
           </div>
         )}
 
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-slate-400">
           Active model: <span className="font-medium">{model}</span> · Streaming:{" "}
           <span className="font-medium">{streamingEnabled ? "on" : "off"}</span>
         </div>
@@ -849,7 +849,7 @@ export default function DraftTab({
             <button
               onClick={generateBestDraftPipeline}
               disabled={!canGenerate}
-              className="flex-1 min-w-[220px] border border-linkedin-blue text-linkedin-blue font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-linkedin-light transition"
+              className="flex-1 min-w-[220px] border border-linkedin-blue text-linkedin-blue font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-linkedin-light transition dark:hover:bg-slate-800"
             >
               {loading || variantLoading ? "Running auto-pipeline..." : "⚡ Generate Best Draft Automatically"}
             </button>
@@ -858,13 +858,13 @@ export default function DraftTab({
       </div>
 
       {(output || loading) && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 text-sm">Main Output</h3>
+            <h3 className="font-semibold text-gray-800 text-sm dark:text-slate-100">Main Output</h3>
             <span className="text-xs text-gray-400">{output.length} chars</span>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap min-h-[120px]">
+          <div className="bg-gray-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap min-h-[120px] dark:bg-slate-800/50 dark:text-slate-200">
             {output || <span className="text-gray-400 animate-pulse">Writing...</span>}
           </div>
 
@@ -874,7 +874,7 @@ export default function DraftTab({
                 <button
                   onClick={() => void generateHashtagSuggestions()}
                   disabled={!canSuggestHashtags}
-                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-300"
                 >
                   {hashtagLoading
                     ? "Generating hashtags..."
@@ -886,7 +886,7 @@ export default function DraftTab({
                 <button
                   onClick={() => void handleCopyHashtags()}
                   disabled={hashtags.length === 0}
-                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-300"
                 >
                   Copy hashtags
                 </button>
@@ -894,22 +894,22 @@ export default function DraftTab({
                 <button
                   onClick={handleAppendHashtags}
                   disabled={hashtags.length === 0}
-                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-300"
                 >
                   Append hashtags
                 </button>
               </div>
 
               {hashtags.length > 0 && (
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <div className="text-xs font-medium text-gray-600">
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2 dark:bg-slate-800/50">
+                  <div className="text-xs font-medium text-gray-600 dark:text-slate-400">
                     Suggested hashtags
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     {hashtags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-xs px-3 py-1.5 rounded-full bg-linkedin-light text-linkedin-blue border border-blue-100"
+                        className="text-xs px-3 py-1.5 rounded-full bg-linkedin-light text-linkedin-blue border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-900/50"
                       >
                         {tag}
                       </span>
@@ -921,7 +921,7 @@ export default function DraftTab({
           )}
 
           {attachedScore && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800 dark:bg-green-900/20 dark:border-green-900/30 dark:text-green-300">
               Attached score: <span className="font-semibold">{attachedScore.totalScore.toFixed(1)}/10</span>
               {" · "}
               This draft will be saved with its scoring result.
@@ -932,7 +932,7 @@ export default function DraftTab({
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => navigator.clipboard.writeText(output)}
-                className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+                className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-300"
               >
                 Copy
               </button>
@@ -940,7 +940,7 @@ export default function DraftTab({
               <button
                 onClick={handleSave}
                 disabled={saved}
-                className="px-4 py-2 text-sm border border-linkedin-blue text-linkedin-blue rounded-xl hover:bg-linkedin-light transition disabled:opacity-50"
+                className="px-4 py-2 text-sm border border-linkedin-blue text-linkedin-blue rounded-xl hover:bg-linkedin-light transition disabled:opacity-50 dark:hover:bg-slate-800"
               >
                 {saved ? "✓ Saved" : attachedScore ? "Save Draft + Score" : "Save Draft"}
               </button>
@@ -948,7 +948,7 @@ export default function DraftTab({
               {(mode === "post" || mode === "recruiter") && (
                 <button
                   onClick={handleSendAllToScore}
-                  className="px-4 py-2 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"
+                  className="px-4 py-2 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition dark:bg-slate-700 dark:hover:bg-slate-600"
                 >
                   Send main + variants to Score
                 </button>
@@ -959,9 +959,9 @@ export default function DraftTab({
       )}
 
       {(variantLoading || variants.length > 0) && (mode === "post" || mode === "recruiter") && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 text-sm">
+            <h3 className="font-semibold text-gray-800 text-sm dark:text-slate-100">
               Auto-generated variants
             </h3>
             {variantLoading && (
@@ -975,15 +975,15 @@ export default function DraftTab({
             {variants.map((variant) => (
               <div
                 key={variant.style}
-                className="border border-gray-200 rounded-xl p-4 space-y-3 bg-blue-50/40"
+                className="border border-gray-200 rounded-xl p-4 space-y-3 bg-blue-50/40 dark:border-slate-800 dark:bg-blue-900/10"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-gray-800 capitalize">
+                  <div className="text-sm font-semibold text-gray-800 capitalize dark:text-slate-100">
                     {variant.style}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {variant.score && (
-                      <span className="text-[11px] px-2 py-1 rounded-full bg-green-100 text-green-700 font-semibold">
+                      <span className="text-[11px] px-2 py-1 rounded-full bg-green-100 text-green-700 font-semibold dark:bg-green-900/40 dark:text-green-400">
                         {variant.score.totalScore.toFixed(1)}/10
                       </span>
                     )}
@@ -993,20 +993,20 @@ export default function DraftTab({
                   </div>
                 </div>
 
-                <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                <div className="text-sm leading-relaxed whitespace-pre-wrap dark:text-slate-300">
                   {variant.content}
                 </div>
 
                 <div className="flex gap-3 flex-wrap">
                   <button
                     onClick={() => navigator.clipboard.writeText(variant.content)}
-                    className="text-xs text-linkedin-blue underline"
+                    className="text-xs text-linkedin-blue underline dark:text-blue-400"
                   >
                     Copy
                   </button>
                   <button
                     onClick={() => useAsMainDraft(variant.content)}
-                    className="text-xs text-linkedin-blue underline"
+                    className="text-xs text-linkedin-blue underline dark:text-blue-400"
                   >
                     Use as main draft
                   </button>
@@ -1018,8 +1018,8 @@ export default function DraftTab({
       )}
 
       {output && !loading && (mode === "post" || mode === "recruiter") && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-          <h4 className="text-sm font-semibold text-gray-700">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 dark:bg-slate-900 dark:border-slate-800">
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300">
             Manual rewrite in a different style
           </h4>
 
@@ -1031,7 +1031,7 @@ export default function DraftTab({
                 className={`px-3 py-1 text-xs rounded-full border transition ${
                   rewriteStyle === s
                     ? "bg-linkedin-blue text-white border-linkedin-blue"
-                    : "text-gray-500 border-gray-200 hover:border-gray-400"
+                    : "text-gray-500 border-gray-200 hover:border-gray-400 dark:text-slate-400 dark:border-slate-700 dark:hover:border-slate-500"
                 }`}
               >
                 {s}
@@ -1042,24 +1042,24 @@ export default function DraftTab({
           <button
             onClick={handleRewrite}
             disabled={rewriteLoading}
-            className="px-4 py-2 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40"
+            className="px-4 py-2 text-sm bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition disabled:opacity-40 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             {rewriteLoading ? "Rewriting..." : "↺ Rewrite"}
           </button>
 
           {rewriteOutput && (
-            <div className="bg-blue-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="bg-blue-50 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap dark:bg-blue-900/20 dark:text-slate-300">
               {rewriteOutput}
               <div className="mt-3 flex gap-3 flex-wrap">
                 <button
                   onClick={() => navigator.clipboard.writeText(rewriteOutput)}
-                  className="text-xs text-linkedin-blue underline"
+                  className="text-xs text-linkedin-blue underline dark:text-blue-400"
                 >
                   Copy rewrite
                 </button>
                 <button
                   onClick={() => useAsMainDraft(rewriteOutput)}
-                  className="text-xs text-linkedin-blue underline"
+                  className="text-xs text-linkedin-blue underline dark:text-blue-400"
                 >
                   Use rewrite as main draft
                 </button>

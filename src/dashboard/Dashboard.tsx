@@ -37,7 +37,11 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ];
 
 function applyTheme(theme: AppTheme) {
-  document.documentElement.classList.toggle("dark", theme === "dark");
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
 }
 
 export default function Dashboard() {
@@ -134,7 +138,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950">
         <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10 dark:bg-slate-900 dark:border-slate-800">
           <div>
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">

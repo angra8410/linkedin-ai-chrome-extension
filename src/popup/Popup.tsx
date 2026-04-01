@@ -3,9 +3,13 @@ import { checkOllamaStatus } from "../lib/ollama";
 import { getSettings, getActiveProfile } from "../lib/storage";
 import { generateStream } from "../lib/ollama";
 import { promptGeneratePost } from "../lib/prompts";
-import type { OllamaStatus, UserBrandProfile, AppSettings } from "../types";
+import type { OllamaStatus, UserBrandProfile, AppSettings, AppTheme } from "../types";
 
 type View = "home" | "draft" | "score";
+
+function applyTheme(theme: AppTheme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+}
 
 export default function Popup() {
   const [status, setStatus] = useState<OllamaStatus>("checking");
@@ -22,6 +26,7 @@ export default function Popup() {
   useEffect(() => {
     (async () => {
       const s = await getSettings();
+      applyTheme(s.theme);
       setSettings(s);
       const p = await getActiveProfile();
       setProfile(p);
@@ -62,7 +67,7 @@ export default function Popup() {
   };
 
   return (
-    <div className="flex flex-col h-full font-sans">
+    <div className="flex min-h-[480px] flex-col bg-gray-50 text-gray-900 font-sans dark:bg-slate-950 dark:text-slate-100">
       {/* Header */}
       <header className="bg-linkedin-blue text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -79,7 +84,7 @@ export default function Popup() {
 
       {/* No profile warning */}
       {!profile && (
-        <div className="p-4 bg-yellow-50 border-b border-yellow-200 text-xs text-yellow-800">
+        <div className="border-b border-yellow-200 bg-yellow-50 p-4 text-xs text-yellow-800 dark:border-yellow-900/30 dark:bg-yellow-900/20 dark:text-yellow-300">
           No brand profile set up.{" "}
           <button onClick={openDashboard} className="underline font-semibold">
             Set up profile
@@ -92,15 +97,15 @@ export default function Popup() {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {view === "home" && (
           <>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Quick draft powered by{" "}
-              <span className="font-medium text-gray-700">{settings?.defaultModel ?? "..."}</span>{" "}
+              <span className="font-medium text-gray-700 dark:text-slate-200">{settings?.defaultModel ?? "..."}</span>{" "}
               running locally.
             </p>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Topic / Idea</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300">Topic / Idea</label>
               <textarea
-                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+                className="w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
                 rows={3}
                 placeholder="e.g. Why data quality matters more than data quantity"
                 value={topic}
@@ -109,9 +114,9 @@ export default function Popup() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Content Pillar</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300">Content Pillar</label>
               <select
-                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue"
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-linkedin-blue dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 value={pillar}
                 onChange={(e) => setPillar(e.target.value)}
               >
@@ -135,14 +140,17 @@ export default function Popup() {
         {view === "draft" && (
           <>
             <div className="flex items-center justify-between">
-              <button onClick={() => setView("home")} className="text-xs text-gray-500 hover:text-gray-800">
+              <button
+                onClick={() => setView("home")}
+                className="text-xs text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-100"
+              >
                 ← Back
               </button>
-              <span className="text-xs text-gray-400">{output.length} chars</span>
+              <span className="text-xs text-gray-400 dark:text-slate-500">{output.length} chars</span>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm leading-relaxed min-h-[180px] whitespace-pre-wrap">
-              {output || <span className="text-gray-400 animate-pulse">Generating...</span>}
+            <div className="min-h-[180px] whitespace-pre-wrap rounded-md border border-gray-200 bg-white p-3 text-sm leading-relaxed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+              {output || <span className="animate-pulse text-gray-400 dark:text-slate-500">Generating...</span>}
             </div>
 
             {output && !loading && (
@@ -166,7 +174,7 @@ export default function Popup() {
       </div>
 
       {/* Footer nav */}
-      <footer className="border-t border-gray-100 px-4 py-2 flex justify-around text-xs text-gray-500">
+      <footer className="flex justify-around border-t border-gray-100 px-4 py-2 text-xs text-gray-500 dark:border-slate-800 dark:text-slate-400">
         <button onClick={openDashboard} className="hover:text-linkedin-blue">📊 Dashboard</button>
         <button onClick={openDashboard} className="hover:text-linkedin-blue">📅 Planner</button>
         <button onClick={openDashboard} className="hover:text-linkedin-blue">⚙️ Settings</button>

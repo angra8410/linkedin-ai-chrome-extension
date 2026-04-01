@@ -205,21 +205,21 @@ Write this as a publishable LinkedIn post for my target audience.`;
   return (
     <div className="max-w-4xl space-y-6">
       {!profile && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-900/30 dark:text-yellow-200">
           Set up your brand profile to use the planner.
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5 dark:bg-slate-900 dark:border-slate-800">
         <div>
-          <h3 className="font-semibold text-gray-800">Weekly Content Plan</h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="font-semibold text-gray-800 dark:text-slate-100">Weekly Content Plan</h3>
+          <p className="text-sm text-gray-500 mt-1 dark:text-slate-400">
             Build a LinkedIn schedule around your best-performing professional posting windows.
           </p>
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          <label className="text-sm text-gray-600 font-medium">Posts per week:</label>
+          <label className="text-sm text-gray-600 font-medium dark:text-slate-300">Posts per week:</label>
           {[2, 3, 4, 5].map((n) => (
             <button
               key={n}
@@ -227,7 +227,7 @@ Write this as a publishable LinkedIn post for my target audience.`;
               className={`w-9 h-9 rounded-full text-sm font-semibold border transition ${
                 postsPerWeek === n
                   ? "bg-linkedin-blue text-white border-linkedin-blue"
-                  : "border-gray-200 text-gray-600 hover:border-linkedin-blue"
+                  : "border-gray-200 text-gray-600 hover:border-linkedin-blue dark:border-slate-700 dark:text-slate-400 dark:hover:border-blue-400"
               }`}
             >
               {n}
@@ -235,14 +235,14 @@ Write this as a publishable LinkedIn post for my target audience.`;
           ))}
         </div>
 
-        <div className="bg-linkedin-light rounded-xl p-4 text-sm text-gray-700">
-          <div className="font-semibold text-linkedin-blue mb-2">Recommended default posting windows</div>
+        <div className="bg-linkedin-light rounded-xl p-4 text-sm text-gray-700 dark:bg-blue-900/20 dark:text-slate-300">
+          <div className="font-semibold text-linkedin-blue mb-2 dark:text-blue-300">Recommended default posting windows</div>
           <div className="space-y-1">
             <div>Tuesday · 10:00 AM</div>
             <div>Wednesday · 10:30 AM</div>
             <div>Thursday · 12:00 PM</div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">
+          <p className="text-xs text-gray-500 mt-3 dark:text-slate-500">
             These are enforced for the 3-post plan. Other plan sizes follow the same weekday-priority logic.
           </p>
         </div>
@@ -251,7 +251,7 @@ Write this as a publishable LinkedIn post for my target audience.`;
           <button
             onClick={handleGeneratePillars}
             disabled={!profile || pillarLoading}
-            className="px-4 py-2.5 text-sm border border-linkedin-blue text-linkedin-blue rounded-xl hover:bg-linkedin-light transition disabled:opacity-40"
+            className="px-4 py-2.5 text-sm border border-linkedin-blue text-linkedin-blue rounded-xl hover:bg-linkedin-light transition disabled:opacity-40 dark:hover:bg-slate-800"
           >
             {pillarLoading ? "Generating..." : "✦ Generate Pillars"}
           </button>
@@ -266,29 +266,29 @@ Write this as a publishable LinkedIn post for my target audience.`;
         </div>
 
         {pillarMessage && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-700">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
             {pillarMessage}
           </div>
         )}
 
         {plannerMessage && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-700">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
             {plannerMessage}
           </div>
         )}
       </div>
 
       {pillars.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h4 className="font-semibold text-gray-800 mb-4">Your Content Pillars</h4>
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 dark:bg-slate-900 dark:border-slate-800">
+          <h4 className="font-semibold text-gray-800 mb-4 dark:text-slate-100">Your Content Pillars</h4>
           <div className="grid md:grid-cols-2 gap-3">
             {pillars.map((p) => (
-              <div key={p.id} className="border border-gray-100 rounded-xl p-4 bg-gray-50">
-                <div className="font-semibold text-sm text-gray-800">{p.name}</div>
-                <p className="text-xs text-gray-500 mt-1">{p.description}</p>
+              <div key={p.id} className="border border-gray-100 rounded-xl p-4 bg-gray-50 dark:bg-slate-800/50 dark:border-slate-800">
+                <div className="font-semibold text-sm text-gray-800 dark:text-slate-100">{p.name}</div>
+                <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">{p.description}</p>
                 <ul className="mt-3 space-y-1">
                   {p.exampleTopics.map((t, i) => (
-                    <li key={i} className="text-xs text-linkedin-blue">
+                    <li key={i} className="text-xs text-linkedin-blue dark:text-blue-400">
                       · {t}
                     </li>
                   ))}
@@ -300,40 +300,40 @@ Write this as a publishable LinkedIn post for my target audience.`;
       )}
 
       {plan && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5 dark:bg-slate-900 dark:border-slate-800">
           <div>
-            <h4 className="font-semibold text-gray-800">
+            <h4 className="font-semibold text-gray-800 dark:text-slate-100">
               Week of{" "}
               {new Date(plan.weekStart).toLocaleDateString("en-US", {
                 month: "long",
                 day: "numeric",
               })}
             </h4>
-            <p className="text-xs text-gray-500 mt-1">{plan.aiNarrative}</p>
+            <p className="text-xs text-gray-500 mt-1 dark:text-slate-400">{plan.aiNarrative}</p>
           </div>
 
           <div className="space-y-3">
             {plan.plannedPosts.map((post, i) => (
               <div
                 key={i}
-                className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition"
+                className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition dark:border-slate-800 dark:hover:bg-slate-800/50"
               >
                 <div className="w-28 shrink-0">
-                  <div className="text-xs font-semibold text-linkedin-blue">
+                  <div className="text-xs font-semibold text-linkedin-blue dark:text-blue-400">
                     {DAYS[post.dayOfWeek - 1] ?? `Day ${post.dayOfWeek}`}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-gray-400 mt-1 dark:text-slate-500">
                     Suggested: {RECOMMENDED_SLOTS[post.dayOfWeek] ?? "10:00 AM"}
                   </div>
                 </div>
 
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-800">{post.topicIdea}</div>
+                  <div className="text-sm font-medium text-gray-800 dark:text-slate-200">{post.topicIdea}</div>
                   <div className="flex gap-2 mt-2 flex-wrap">
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-400">
                       {post.pillar}
                     </span>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-400">
                       {FORMAT_EMOJIS[post.format] ?? ""} {post.format}
                     </span>
                   </div>
@@ -341,13 +341,13 @@ Write this as a publishable LinkedIn post for my target audience.`;
                   <div className="mt-3 flex gap-3 flex-wrap">
                     <button
                       onClick={() => handleSendPlannedTopicToDraft(post)}
-                      className="text-xs text-linkedin-blue underline"
+                      className="text-xs text-linkedin-blue underline dark:text-blue-400"
                     >
                       Send planned topic to Draft
                     </button>
                     <button
                       onClick={() => handleGenerateBestDraftFromPlanner(post)}
-                      className="text-xs text-linkedin-blue underline"
+                      className="text-xs text-linkedin-blue underline dark:text-blue-400"
                     >
                       Generate best draft automatically
                     </button>
@@ -357,7 +357,7 @@ Write this as a publishable LinkedIn post for my target audience.`;
             ))}
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
+          <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 dark:bg-slate-800/50 dark:text-slate-400">
             Best practice: post consistently for 2–4 weeks, then compare engagement and profile visits in Analytics before changing your time slots.
           </div>
         </div>
